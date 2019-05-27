@@ -1,8 +1,8 @@
 var handoutFormatter = handoutFormatter || (function() {
     'use strict';
-    const blue = '#063e62';
-    const gold = '#b49e67';
-    const red  = `#8f1313`;
+    const blue       = '#063e62';
+    const gold       = '#b49e67';
+    const red        = `#8f1313`;
     const divstyle   = 'style="color: #eee;width: 90%; border: 1px solid black; background-color: #131415; padding: 5px;"';
     const astyle1    = `'style="text-align:center; border: 1px solid black; margin: 1px; padding: 2px; background-color: ${blue}; border-radius: 4px;  box-shadow: 1px 1px 1px #707070; width: 100px;`;
     const astyle2    = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${blue}; border-radius: 4px;  box-shadow: 1px 1px 1px #707070; width: 150px;`;
@@ -10,35 +10,46 @@ var handoutFormatter = handoutFormatter || (function() {
     const headstyle  = `style="color: #fff; font-size: 18px; text-align: left; font-constiant: small-caps; font-family: Times, serif; margin-bottom: 2px;"`;
     const substyle   = 'style="font-size: 11px; line-height: 13px; margin-top: -2px; font-style: italic;"';
     const breaks     = `style="border-color:${gold}; margin: 5px 2px;"`;
-    const label      = `style="color: #c9c9c9; display:inline-block; width: 50%;"`
-    const label2     = `style="color: #c9c9c9; display:inline-block; width: 32%;"`
-    const version    = '1.0',
+    const label      = `style="color: #c9c9c9; display:inline-block; width: 50%"`;
+    const label2     = `style="color: #c9c9c9; display:inline-block; width: 32%"`;
+    const version    = '1.1';
 
-    handleInput = (msg) => {
+    const handleInput = (msg) => {
         const args = msg.content.split(" --");
         if (msg.type !== "api") { return; }
+        log(args);
         if (args[0] === "!handout") {
             switch(args[1]) {
                 case 'create':
                     createHandout();
                     break;
                 default :
-                     handoutMenu();
+                     apiMenu();
                      break;
             };
+        } else if (args[0] === "!token") {
+            if (args[1] === 'link' && msg.selected != undefined) {
+                linkTokens(msg.selected);
+            } else {
+                sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
+                    `<div ${headstyle}>Module Helper</div>` +
+                    `<div ${substyle}>Menu (v.${version})</div>` +
+                    '<div ' + arrowstyle + '></div>' +
+                    `<div style="text-align:center;">No tokens selected.</div>` +
+                    '</div>'
+                );
+            }
         };
     },
 
-    handoutMenu = () => {
-        sendChat('Handout Formatter', '/w gm <div ' + divstyle + '>' +
-            `<div ${headstyle}>Handouts</div>` +
+    apiMenu = () => {
+        sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
+            `<div ${headstyle}>Module Helper</div>` +
             `<div ${substyle}>Menu (v.${version})</div>` +
             '<div ' + arrowstyle + '></div>' +
-            `<div style="text-align:center;"><a ${astyle2}" href="!handout --create">Create</a></div>` +
+            `<div style="text-align:center;"><a ${astyle2}" href="!handout --create">Create/Update Handouts</a></div>` +
             `<hr ${breaks} />` +
-            `<div style="text-align:center;"><a ${astyle2}" href="!handout --get">Get</a></div>` +
-            `<hr ${breaks} />` +
-            `<div style="text-align:center;"><a ${astyle2}" href="!handout --log">Log</a></div>` +
+            `<div style="text-align:center;"><a ${astyle2}" href="!token --link">Link Tokens</a></div>` +
             `<hr ${breaks} />` +
             '</div>'
         );
@@ -312,6 +323,9 @@ var handoutFormatter = handoutFormatter || (function() {
                 const id = JSON.stringify(existingHandout).split(`_id":"`)[1].split(`","`)[0];
                 const handout = getObj("handout", id);
                 handout.set('gmnotes', data.text);
+
+                log("ID: " + JSON.stringify(id)); 
+                log("handout: " + JSON.stringify(handout));
             } else {
                 const handout = createObj('handout', {
                     name: data.name
@@ -319,6 +333,53 @@ var handoutFormatter = handoutFormatter || (function() {
                 handout.set('gmnotes', data.text);
             };
         });
+    },
+
+//This needs to look at a token's linked character sheet. 
+    linkTokens = (selected) => {
+        selected.forEach((token) => {
+            const tokenID = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
+            const characterID = getIDsFromTokens(token);
+            const hp = getAttrByName([characterID], 'hp', "max");
+            const ac = getAttrByName([characterID], 'ac', "current");
+            let mods = {}; 
+
+            mods.bar1_value = hp;
+            mods.bar1_max = hp;
+            mods.bar2_value = ac;
+            mods.showname = true;
+
+            log("Token ID: " + JSON.stringify(tokenID) + "," + "Character ID: " + JSON.stringify(characterID));
+            log("Mods: " + JSON.stringify(mods)); 
+
+            const tokenGet = getObj("graphic", tokenID);
+            const repChar = getObj('character', characterID);
+
+            if (mods) {
+                tokenGet.set(mods);
+                setDefaultTokenForCharacter(repChar,tokenGet);
+            } else {
+                log("Mods not found"); 
+            }
+
+            sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
+                `<div ${headstyle}>Module Helper</div>` +
+                `<div ${substyle}>Menu (v.${version})</div>` +
+                '<div ' + arrowstyle + '></div>' +
+                `<div style="text-align:center;">HP / HP_Max: ${mods.bar1_value} / ${mods.bar1_max = hp}</div>` +
+                `<div style="text-align:center;">AC: ${mods.bar2_value}</div>` +
+                `<div style="text-align:center;">Show Name: ${mods.showname}</div>` +
+                '</div>'
+            );
+        });
+    },
+
+    //Used to get character attributes for Linking Tokens
+    getIDsFromTokens = (selectedToken) => {
+        return [selectedToken].map(obj => getObj("graphic", obj._id))
+            .filter(x => !!x)
+            .map(token => token.get("represents"))
+            .filter(id => getObj("character", id || ""));
     },
 
     registerEventHandlers = () => {
