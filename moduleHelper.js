@@ -62,8 +62,7 @@ var handoutFormatter = handoutFormatter || (function() {
 
     createHandout = () => {
         const handoutText = 
-        {data: [ 
-            {
+        [{
                 name: "Mini-Dungeon Monthly - April '19",
                 text:`
                     <h1 style="text-align:center;">Mini-Dungeon Monthly - March '19</h1><hr>
@@ -198,23 +197,21 @@ var handoutFormatter = handoutFormatter || (function() {
                     <p><span style="text-decoration: underline;">7. MATERIALS ROOM</span></p>
                     <p>&nbsp;The hostage, a CG <strong>veteran</strong> named Ka Thulam, has transformed into a clockwork hunter. She is trapped here, supported by the original guardians, two clockwork hounds. If returned somehow to human form, she stays with the party for three adventures.</p>
                     <p>&nbsp;The walls of this room hold hundreds of boxes containing rare metals suitable for making clockwork creatures.&nbsp;</p>`
-            }
-        ]};
+            }];
 
         const handoutObjects = findObjs({
             _type: 'handout'
         });
 
         let feedback = "", handoutsCreated = 0, handoutsUpdated = 0;
-        const newHandout = handoutText.data;
-        newHandout.forEach((data) => {
+        handoutText.forEach((data) => {
             const name = data.name, notes = 'gmnotes', text = data.text;
             const string = JSON.stringify(data.name);
             if (JSON.stringify(handoutObjects).includes(data.name)) {
                 existingHandout(name, notes, text);
                 handoutsUpdated += 1;
             } else {
-                newHandout();
+                newHandout(name, notes, text);
                 handoutsCreated += 1;
             };
         });
@@ -222,25 +219,17 @@ var handoutFormatter = handoutFormatter || (function() {
         chatMessage(`<div style="text-align:center;">Created ${handoutsCreated} handouts, Updated ${handoutsUpdated}</div>`);
     },
 
+    //== Create a handout full of links
     linksHandout = () => {
-        const handouts       = findObjs({  _type: 'handout' });
-        const characters     = findObjs({  _type: 'character' });
-        const journalObjects = Object.assign(handouts, characters);
-
-        let handoutText = "<h1>Handout Links</h1><br>";
-        journalObjects.forEach((data) => {
-            //log(data.attributes.name);
-            log(Object.entries(data));
-            if (data.attributes.name && data.attributes.name != "Handout Links") {
-                handoutText += `[${data.attributes.name}] <br>`;
-            } else {
-                log("Handout lacked a name"); 
-            };
-        });
+        const handoutObjects = findObjs({_type: 'handout'});
+        let handoutText      = "<h1>Handout Links</h1><hr>";
+        handoutText += journalItemsTitles("handout");
+        handoutText += "<hr>";
+        handoutText += journalItemsTitles("character");
         
         const name   = "Handout Links", notes = 'notes', text = handoutText;
         let feedback = "";
-        if (JSON.stringify(handouts).includes("Handout Links")) {
+        if (JSON.stringify(handoutObjects).includes("Handout Links")) {
             existingHandout(name, notes, text);
             feedback += "Updating Handout Links handout"
         } else {
@@ -251,6 +240,26 @@ var handoutFormatter = handoutFormatter || (function() {
         chatMessage(`<div style="text-align:center;">${feedback}</div>`);
     },
 
+    //== Create lists for the Linking handout
+    journalItemsTitles = (type) => {
+        const journalObjects = findObjs({_type: type});
+        let sortArray        = [];
+        let text             = "";
+
+        text += `<h2>${type.charAt(0).toUpperCase()}${type.slice(1)}s</h2>`;
+        journalObjects.forEach((data) => {
+            if (data.attributes.name && data.attributes.name != "Handout Links") {
+                sortArray.push(`[${data.attributes.name}] <br>`);
+            } else {
+                log("Journal item lacked a name"); 
+            };
+        });
+        const sorted = sortArray.sort();
+        sorted.forEach((title) => { text += title; });
+        return text
+    },
+
+    //== Update a Handout 
     existingHandout = (name, notes, text) => {
         const existingHandout = findObjs({
             name: name
@@ -260,6 +269,7 @@ var handoutFormatter = handoutFormatter || (function() {
         handout.set(notes, text);
     },
 
+    //== Createe a new Handout
     newHandout = (name, notes, text) => {
         const avatar  = "https://s3.amazonaws.com/files.d20.io/images/35666065/0hOTGz_lbcziK4anAuVROw/max.png?1499526251";
         const handout = createObj('handout', {
@@ -269,7 +279,7 @@ var handoutFormatter = handoutFormatter || (function() {
         handout.set(notes, text);
     },
 
-//This needs to look at a token's linked character sheet. 
+///== his needs to look at a token's linked character sheet. 
     linkTokens = (selected) => {
         selected.forEach((token) => {
             const tokenID     = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
