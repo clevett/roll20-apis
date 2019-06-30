@@ -153,11 +153,11 @@ var handoutFormatter = handoutFormatter || (function() {
             const mp          = getAttrByName([characterID], 'mutation', "mutation_max");
             let mods          = {}; 
             
-            mods.bar1_value = str;
+            mods.bar1_value = str || 0;
             mods.bar1_max   = str;
-            mods.bar2_value = agi;
+            mods.bar2_value = agi || 0;
             mods.bar2_max = agi;
-            mods.bar3_value = mp;
+            mods.bar3_value = mp || 0;
             mods.bar3_max = 10;
             mods.showname   = true;
             mods.showplayers_bar1 = true;
@@ -176,8 +176,7 @@ var handoutFormatter = handoutFormatter || (function() {
                 log("Mods not found"); 
             };
 
-            chatMessage(`<div style="text-align:center;">Damage: ${mods.bar1_value} / ${mods.bar1_max = str}</div><div style="text-align:center;">Fatigue: ${mods.bar2_value} / ${mods.bar2_max = agi}</div><div style="text-align:center;">Mutation Points: ${mods.bar3_value} / ${mods.bar3_max}</div><div style="text-align:center;">Show Name: ${mods.showname}</div><div style="text-align:center;">Show Bar 1: ${mods.showplayers_bar1}</div><div style="text-align:center;">Show Bar 2: ${mods.showplayers_bar2}</div>
-            <div style="text-align:center;">Show Bar 2: ${mods.showplayers_bar3}</div>`);
+            chatMessage(`<div style="text-align:center;">Damage: ${mods.bar1_value} / ${mods.bar1_max = str}</div><div style="text-align:center;">Fatigue: ${mods.bar2_value} / ${mods.bar2_max = agi}</div><div style="text-align:center;">Mutation Points: ${mods.bar3_value} / ${mods.bar3_max}</div><div style="text-align:center;">Show Name: ${mods.showname}</div><div style="text-align:center;">Show Bar 1: ${mods.showplayers_bar1}</div><div style="text-align:center;">Show Bar 2: ${mods.showplayers_bar2}</div>`);
         });
     },
 
