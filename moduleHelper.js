@@ -34,7 +34,7 @@ var handoutFormatter = handoutFormatter || (function() {
                 const supportedSystems =["dd", "myz"];
                 const system = args[2];
                 (supportedSystems.includes(system)) ? linkTokens(msg.selected, system) : chatMessage(`<div ${centered}>Game system was not provided. Use !helper for menu.</div>`);
-            } else if (msg.selected = undefined) {
+            } else {
                 sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
                     `<div ${headstyle}>Module Helper</div>` +
                     `<div ${substyle}>Menu (v.${version})</div>` +
@@ -42,9 +42,7 @@ var handoutFormatter = handoutFormatter || (function() {
                     `<div ${centered}>No tokens selected.</div>` +
                     '</div>'
                 );
-            } else {
-                apiMenu();
-            }
+            };
         } else if (args[0] === "!helper") {
             apiMenu();
         };
@@ -55,13 +53,15 @@ var handoutFormatter = handoutFormatter || (function() {
             `<div ${headstyle}>Module Helper</div>` +
             `<div ${substyle}>Menu (v.${version})</div>` +
             `<div ${arrowstyle}></div>` +
+            `<div ${centered}><strong>Handouts Commmands</strong></div>` +
             `<div ${centered}><a ${astyle2}" href="!handout --create">Create/Update Handouts</a></div>` +
+            `<div style="text-align:center;"><a ${astyle2}" href="!handout --links">Handout of Links</a></div>` +
+            `<div ${centered}>Creates or updates a handout for linking to other journal items.</div>` +
             `<hr ${breaks} />` +
-            `<div ${centered}><a ${astyle2}" href="!handout --links">Links Handout</a></div>` +
-            `<hr ${breaks} />` +
+            `<div ${centered}><strong>Tokens Commands</strong></div>` +
             `<div ${centered}><a ${astyle2}" href="!token --link --dd">Link Tokens (D&D)</a></div>` +
-            `<hr ${breaks} />` +
             `<div ${centered}><a ${astyle2}" href="!token --link --myz">Link Tokens (MYZ)</a></div>` +
+            `<div ${centered}>Tokens must be linked to a character sheet.</div>` +
             `<hr ${breaks} />` +
             '</div>'
         );
@@ -306,7 +306,7 @@ var handoutFormatter = handoutFormatter || (function() {
                 mods.bar2_link  = (link[0]) ? link[0].id : "";
                 mods.showname   = true;
 
-                string += `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />`
+                string += (characterName) ? `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />` : `<div ${centered}><strong>No character sheet selected in Token settings. API needs restarted. Go to API settings and click "Restart API Sandbox"</strong></div><hr ${breaks} />`;
                 string += (hp) ? `${prefix} HP / HP_Max:</span> ${mods.bar1_value} / ${mods.bar1_max}</div>` : `${prefix} HP / HP_Max:</span> 'hp_max' not found</div>`;
                 string += (ac) ? `${prefix} AC:</span> ${mods.bar2_value}</div>` : `${prefix} AC:</span> 'npc_ac' not found</div>`;
                 string += (link[0]) ? `${prefix} Link Bar 2:</span> 'npc_ac'</div>` : `${prefix} Link Bar 2:</span> 'npc_ac' not found</div>`;
