@@ -136,9 +136,10 @@ var handoutFormatter = handoutFormatter || (function() {
                     const hp   = getAttrByName([characterID], 'hp', "max");
                     const ac   = getAttrByName([characterID], 'npc_ac', "current");
                     const link = getCharacterAttr(characterID, `npc_ac`);
-                    mods.bar1_value = hp;
-                    mods.bar1_max   = hp;
-                    mods.bar2_value = ac;
+
+                    mods.bar1_value = parseInt(hp);
+                    mods.bar1_max   = parseInt(hp);
+                    mods.bar2_value = parseInt(ac);
                     mods.bar2_link  = (link[0]) ? link[0].id : "";
                     mods.showname   = true;
 
