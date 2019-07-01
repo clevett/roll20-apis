@@ -1,8 +1,6 @@
 var handoutFormatter = handoutFormatter || (function() {
     'use strict';
-    const blue       = '#063e62';
-    const gold       = '#b49e67';
-    const red        = `#8f1313`;
+    const blue = '#063e62', gold = '#b49e67', red = `#8f1313`;
     const divstyle   = 'style="color: #eee;width: 90%; border: 1px solid black; background-color: #131415; padding: 5px;"';
     const astyle1    = `style="text-align:center; border: 1px solid black; margin: 1px; padding: 2px; background-color: ${blue}; border-radius: 4px;  box-shadow: 1px 1px 1px #707070; width: 100px;`;
     const astyle2    = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${blue}; border-radius: 4px;  box-shadow: 1px 1px 1px #707070; width: 150px;`;
@@ -13,7 +11,7 @@ var handoutFormatter = handoutFormatter || (function() {
     const label      = `style="color: #c9c9c9; display:inline-block; width: 50%"`;
     const label2     = `style="color: #c9c9c9; display:inline-block; width: 32%"`;
     const centered   = `style="text-align:center;`;
-    const version    = '1.4';
+    const version    = '1.45';
 
     const handleInput = (msg) => {
         const args = msg.content.split(" --");
@@ -35,16 +33,20 @@ var handoutFormatter = handoutFormatter || (function() {
             if (args[1] === 'link' && msg.selected != undefined) {
                 const supportedSystems =["dd", "myz"];
                 const system = args[2];
-                (supportedSystems.includes(system)) ? linkTokens(msg.selected, system) : chatMessage(`<div style="text-align:center;">Game system was not provided. Use !handout for menu.</div>`);
-            } else {
+                (supportedSystems.includes(system)) ? linkTokens(msg.selected, system) : chatMessage(`<div ${centered}>Game system was not provided. Use !helper for menu.</div>`);
+            } else if (msg.selected = undefined) {
                 sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
                     `<div ${headstyle}>Module Helper</div>` +
                     `<div ${substyle}>Menu (v.${version})</div>` +
-                    '<div ' + arrowstyle + '></div>' +
-                    `<div style="text-align:center;">No tokens selected.</div>` +
+                    `<div ${arrowstyle}></div>` +
+                    `<div ${centered}>No tokens selected.</div>` +
                     '</div>'
                 );
+            } else {
+                apiMenu();
             }
+        } else if (args[0] === "!helper") {
+            apiMenu();
         };
     },
 
@@ -52,14 +54,14 @@ var handoutFormatter = handoutFormatter || (function() {
         sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
             `<div ${headstyle}>Module Helper</div>` +
             `<div ${substyle}>Menu (v.${version})</div>` +
-            '<div ' + arrowstyle + '></div>' +
-            `<div style="text-align:center;"><a ${astyle2}" href="!handout --create">Create/Update Handouts</a></div>` +
+            `<div ${arrowstyle}></div>` +
+            `<div ${centered}><a ${astyle2}" href="!handout --create">Create/Update Handouts</a></div>` +
             `<hr ${breaks} />` +
-            `<div style="text-align:center;"><a ${astyle2}" href="!handout --links">Links Handout</a></div>` +
+            `<div ${centered}><a ${astyle2}" href="!handout --links">Links Handout</a></div>` +
             `<hr ${breaks} />` +
-            `<div style="text-align:center;"><a ${astyle2}" href="!token --link --dd">Link Tokens (D&D)</a></div>` +
+            `<div ${centered}><a ${astyle2}" href="!token --link --dd">Link Tokens (D&D)</a></div>` +
             `<hr ${breaks} />` +
-            `<div style="text-align:center;"><a ${astyle2}" href="!token --link --myz">Link Tokens (MYZ)</a></div>` +
+            `<div ${centered}><a ${astyle2}" href="!token --link --myz">Link Tokens (MYZ)</a></div>` +
             `<hr ${breaks} />` +
             '</div>'
         );
@@ -70,7 +72,7 @@ var handoutFormatter = handoutFormatter || (function() {
         [{
                 name: "Mini-Dungeon Monthly - April '19",
                 text:`
-                    <h1 style="text-align:center;">Mini-Dungeon Monthly - March '19</h1><hr>
+                    <h1 ${centered}>Mini-Dungeon Monthly - March '19</h1><hr>
                     <h2>Contents</h2>
                     <h3>[Avarice of the Svirfneblin Whistle Punks]</h3>
                     <p style="margin-left: 25px"><i>An adventure for four level 1 characters by Jonathan G. Nelson</i></p>
@@ -221,7 +223,7 @@ var handoutFormatter = handoutFormatter || (function() {
             };
         });
 
-        chatMessage(`<div style="text-align:center;">Created ${handoutsCreated} handouts, Updated ${handoutsUpdated}</div>`);
+        chatMessage(`<div ${centered}>Created ${handoutsCreated} handouts, Updated ${handoutsUpdated}</div>`);
     },
 
     //== Create a handout full of links
@@ -242,7 +244,7 @@ var handoutFormatter = handoutFormatter || (function() {
             feedback += "Creating Handout Links"
          };
 
-        chatMessage(`<div style="text-align:center;">${feedback}</div>`);
+        chatMessage(`<div ${centered}>${feedback}</div>`);
     },
 
     //== Create lists for the Linking handout
@@ -284,7 +286,7 @@ var handoutFormatter = handoutFormatter || (function() {
         handout.set(notes, text);
     },
 
-///== This looks at a Token's Linked character Sheet and set a number of defaults 
+    //== This looks at a Token's Linked character Sheet and set a number of defaults 
     linkTokens = (selected, system) => {
         selected.forEach((token) => {
             const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
@@ -294,16 +296,21 @@ var handoutFormatter = handoutFormatter || (function() {
             let string        = "";
 
             if (system === "dd") {
-                const hp     = getAttrByName([characterID], 'hp', "max");
-                const ac     = getAttrByName([characterID], 'ac', "current");
-                const link = getCharacterAttr(characterID, `ac`), ID = link[0].id;
+                const hp   = getAttrByName([characterID], 'hp', "max");
+                const ac   = getAttrByName([characterID], 'npc_ac', "current");
+                const link = getCharacterAttr(characterID, `npc_ac`);
+                const prefix = `<div><span style="color:${blue};font-weight:bold;">`
                 mods.bar1_value = hp;
                 mods.bar1_max   = hp;
                 mods.bar2_value = ac;
-                mods.bar2_link  = ID;
+                mods.bar2_link  = (link[0]) ? link[0].id : "";
                 mods.showname   = true;
 
-                string += `<div ${centered}><strong>${characterName}</strong></div><div ${centered}>HP / HP_Max: ${mods.bar1_value} / ${mods.bar1_max = hp}</div><div ${centered}>AC: ${mods.bar2_value}</div><div ${centered}>Show Name: ${mods.showname}</div>`
+                string += `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />`
+                string += (hp) ? `${prefix} HP / HP_Max:</span> ${mods.bar1_value} / ${mods.bar1_max}</div>` : `${prefix} HP / HP_Max:</span> 'hp_max' not found</div>`;
+                string += (ac) ? `${prefix} AC:</span> ${mods.bar2_value}</div>` : `${prefix} AC:</span> 'npc_ac' not found</div>`;
+                string += (link[0]) ? `${prefix} Link Bar 2:</span> 'npc_ac'</div>` : `${prefix} Link Bar 2:</span> 'npc_ac' not found</div>`;
+                string += `${prefix} Show Name:</span> ${mods.showname}</div>`
             } else if (system === "myz") {
                 const attributes = ["strength", "agility", "mutation"];
                 attributes.forEach((attr) => {
