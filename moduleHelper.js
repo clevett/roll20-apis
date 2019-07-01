@@ -289,68 +289,80 @@ var handoutFormatter = handoutFormatter || (function() {
     //== This looks at a Token's Linked character Sheet and set a number of defaults 
     linkTokens = (selected, system) => {
         selected.forEach((token) => {
+            const represents    = getTokenRepresents(token);
             const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
             const characterID   = getIDsFromTokens(token);
             const characterName = getAttrByName([characterID], 'character_name');
             let mods          = {}; 
             let string        = "";
+            
+            if (represents[0] != "") {
+                if (system === "dd") {
+                    const hp   = getAttrByName([characterID], 'hp', "max");
+                    const ac   = getAttrByName([characterID], 'npc_ac', "current");
+                    const link = getCharacterAttr(characterID, `npc_ac`);
+                    const prefix = `<div><span style="color:${blue};font-weight:bold;">`
+                    mods.bar1_value = hp;
+                    mods.bar1_max   = hp;
+                    mods.bar2_value = ac;
+                    mods.bar2_link  = (link[0]) ? link[0].id : "";
+                    mods.showname   = true;
 
-            if (system === "dd") {
-                const hp   = getAttrByName([characterID], 'hp', "max");
-                const ac   = getAttrByName([characterID], 'npc_ac', "current");
-                const link = getCharacterAttr(characterID, `npc_ac`);
-                const prefix = `<div><span style="color:${blue};font-weight:bold;">`
-                mods.bar1_value = hp;
-                mods.bar1_max   = hp;
-                mods.bar2_value = ac;
-                mods.bar2_link  = (link[0]) ? link[0].id : "";
-                mods.showname   = true;
+                    string += (characterName) ? `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />` : `<div ${centered}><strong>No character sheet selected in Token settings. API needs restarted. Go to API settings and click "Restart API Sandbox"</strong></div><hr ${breaks} />`;
+                    string += (hp) ? `${prefix} HP / HP_Max:</span> ${mods.bar1_value} / ${mods.bar1_max}</div>` : `${prefix} HP / HP_Max:</span> 'hp_max' not found</div>`;
+                    string += (ac) ? `${prefix} AC:</span> ${mods.bar2_value}</div>` : `${prefix} AC:</span> 'npc_ac' not found</div>`;
+                    string += (link[0]) ? `${prefix} Link Bar 2:</span> 'npc_ac'</div>` : `${prefix} Link Bar 2:</span> 'npc_ac' not found</div>`;
+                    string += `${prefix} Show Name:</span> ${mods.showname}</div>`
+                } else if (system === "myz") {
+                    const attributes = ["strength", "agility", "mutation"];
+                    attributes.forEach((attr) => {
+                        //Linking bars requires the attribute ID
+                        const link  = getCharacterAttr(characterID, `${attr}`);
+                        const ID    = (link.length === 0) ? false : link[0].id;
+                        //Set value and max of the attribute
+                        const value = getAttrByName([characterID], `${attr}`);
+                        const max   = getAttrByName([characterID], `${attr}`, `${attr}_max`);
+                        //Determien the bar based on the position in array
+                        const num   = parseInt(attributes.indexOf(`${attr}`)) + 1;
 
-                string += (characterName) ? `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />` : `<div ${centered}><strong>No character sheet selected in Token settings. API needs restarted. Go to API settings and click "Restart API Sandbox"</strong></div><hr ${breaks} />`;
-                string += (hp) ? `${prefix} HP / HP_Max:</span> ${mods.bar1_value} / ${mods.bar1_max}</div>` : `${prefix} HP / HP_Max:</span> 'hp_max' not found</div>`;
-                string += (ac) ? `${prefix} AC:</span> ${mods.bar2_value}</div>` : `${prefix} AC:</span> 'npc_ac' not found</div>`;
-                string += (link[0]) ? `${prefix} Link Bar 2:</span> 'npc_ac'</div>` : `${prefix} Link Bar 2:</span> 'npc_ac' not found</div>`;
-                string += `${prefix} Show Name:</span> ${mods.showname}</div>`
-            } else if (system === "myz") {
-                const attributes = ["strength", "agility", "mutation"];
-                attributes.forEach((attr) => {
-                    //Linking bars requires the attribute ID
-                    const link  = getCharacterAttr(characterID, `${attr}`);
-                    const ID    = (link.length === 0) ? false : link[0].id;
-                    //Set value and max of the attribute
-                    const value = getAttrByName([characterID], `${attr}`);
-                    const max   = getAttrByName([characterID], `${attr}`, `${attr}_max`);
-                    //Determien the bar based on the position in array
-                    const num   = parseInt(attributes.indexOf(`${attr}`)) + 1;
+                        mods[`bar${num}_value`] = value || 0;
+                        mods[`bar${num}_max`]   = (attr === "mutation") ? 10 : max || 0;
+                        (ID) ? mods[`bar${num}_link`]  = ID : log(`Linked attribute not found for bar${num}`);
+                    });
 
-                    mods[`bar${num}_value`] = value || 0;
-                    mods[`bar${num}_max`]   = (attr === "mutation") ? 10 : max || 0;
-                    (ID) ? mods[`bar${num}_link`]  = ID : log(`Linked attribute not found for bar${num}`);
-                });
+                    mods.showname         = true;
+                    mods.showplayers_bar1 = true;
+                    mods.showplayers_bar2 = true;
 
-                mods.showname         = true;
-                mods.showplayers_bar1 = true;
-                mods.showplayers_bar2 = true;
+                    string += `<div ${centered}><strong>${characterName}</strong></div><div ${centered}>Str: ${mods.bar1_value} / ${mods.bar1_max}</div><div ${centered}>Agi: ${mods.bar2_value} / ${mods.bar2_max}</div><div ${centered}>Mutation Points: ${mods.bar3_value} / ${mods.bar3_max}</div><div ${centered}>Show Name: ${mods.showname}</div><div ${centered}>Show Bar 1: ${mods.showplayers_bar1}</div><div ${centered}>Show Bar 2: ${mods.showplayers_bar2}</div><div ${centered}>Link Bar 1: Strength</div><div ${centered}>Link Bar 2: Agility</div><div ${centered}>Link Bar 3: Mutation</div>`
+                } else {
+                    string += `<div ${centered}><strong>Finished (System Not Supported)</strong></div>`
+                };
 
-                string += `<div ${centered}><strong>${characterName}</strong></div><div ${centered}>Str: ${mods.bar1_value} / ${mods.bar1_max}</div><div ${centered}>Agi: ${mods.bar2_value} / ${mods.bar2_max}</div><div ${centered}>Mutation Points: ${mods.bar3_value} / ${mods.bar3_max}</div><div ${centered}>Show Name: ${mods.showname}</div><div ${centered}>Show Bar 1: ${mods.showplayers_bar1}</div><div ${centered}>Show Bar 2: ${mods.showplayers_bar2}</div><div ${centered}>Link Bar 1: Strength</div><div ${centered}>Link Bar 2: Agility</div><div ${centered}>Link Bar 3: Mutation</div>`
+                //log("Mods: " + JSON.stringify(mods));
+
+                //Set the default token for the represented character sheet
+                const tokenGet = getObj("graphic", tokenID);
+                const repChar  = getObj('character', characterID);
+
+                if (mods) {
+                    tokenGet.set(mods);
+                    setDefaultTokenForCharacter(repChar,tokenGet);
+                } else {
+                    log("Mods not found"); 
+                };
+
+                chatMessage(`${string}`);
             } else {
-                string += `<div ${centered}><strong>Finished (System Not Supported)</strong></div>`
+                chatMessage(`<div>Token does not represents a character. Set a character in the Token settings.</div>`);
             };
-
-            //log("Mods: " + JSON.stringify(mods)); 
-
-            const tokenGet = getObj("graphic", tokenID);
-            const repChar  = getObj('character', characterID);
-
-            if (mods) {
-                tokenGet.set(mods);
-                setDefaultTokenForCharacter(repChar,tokenGet);
-            } else {
-                log("Mods not found"); 
-            };
-
-            chatMessage(`${string}`);
         });
+    },
+
+    //Used to verify a token represents a character before trying to Link Tokens.
+    getTokenRepresents = (selectedToken) => {
+        return [selectedToken].map(obj => getObj("graphic", obj._id))
+            .map(token => token.get("represents"));
     },
 
     //Used to get character attributes for Linking Tokens

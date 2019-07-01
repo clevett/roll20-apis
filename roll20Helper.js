@@ -124,10 +124,6 @@ var handoutFormatter = handoutFormatter || (function() {
     linkTokens = (selected, system) => {
         selected.forEach((token) => {
             const represents = getTokenRepresents(token);
-            log(represents);
-
-            (represents[0] === "") ? log("Token Info is Empty") : ("Token Info is not Empty");
-
             const characterID = getIDsFromTokens(token);
             const characterName = getAttrByName([characterID], 'character_name');
             const prefix        = `<div><span style="color:${purple};font-weight:bold;">`
