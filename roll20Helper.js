@@ -28,9 +28,9 @@ var handoutFormatter = handoutFormatter || (function() {
         } else if (args[0] === "!token") {
             if (args[1] === 'link' && msg.selected != undefined) {
                 const supportedSystems =["dd"];
-                const system = args[2];
+                const system           = args[2];
                 (supportedSystems.includes(system)) ? linkTokens(msg.selected, system) : chatMessage(`<div ${centered}>Game system was not provided. Use !helper for menu.</div>`);
-            } else if (msg.selected = undefined) {
+            } else {
                 sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
                     `<div ${headstyle}>Module Helper</div>` +
                     `<div ${substyle}>Menu (v.${version})</div>` +
@@ -38,9 +38,7 @@ var handoutFormatter = handoutFormatter || (function() {
                     `<div ${centered}>No tokens selected.</div>` +
                     '</div>'
                 );
-            } else {
-                apiMenu();
-            }
+            };
         } else if (args[0] === "!helper") {
             apiMenu();
         };
@@ -53,9 +51,11 @@ var handoutFormatter = handoutFormatter || (function() {
             `<div ${arrowstyle}></div>` +
             `<div ${centered}><strong>Handouts Commmands</strong></div>` +
             `<div style="text-align:center;"><a ${astyle2}" href="!handout --links">Handout of Links</a></div>` +
+            `<div ${centered}>Creates or updates a handout for linking to other journal items.</div>` +
             `<hr ${breaks} />` +
             `<div ${centered}><strong>Tokens Commands</strong></div>` +
             `<div style="text-align:center;"><a ${astyle2}" href="!token --link --dd">D&D NPC Linker</a></div>` +
+            `<div ${centered}>Tokens must be linked to a character sheet.</div>` +
             '</div>'
         );
     },
@@ -123,7 +123,7 @@ var handoutFormatter = handoutFormatter || (function() {
     //== This looks at a Token's Linked character Sheet and set a number of defaults 
     linkTokens = (selected, system) => {
         selected.forEach((token) => {
-            const characterID   = getIDsFromTokens(token);
+            const characterID = getIDsFromTokens(token);
             const characterName = getAttrByName([characterID], 'character_name');
             const prefix        = `<div><span style="color:${purple};font-weight:bold;">`
             const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
@@ -140,7 +140,7 @@ var handoutFormatter = handoutFormatter || (function() {
                 mods.bar2_link  = (link[0]) ? link[0].id : "";
                 mods.showname   = true;
 
-                string += `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />`
+                string += (characterName) ? `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />` : `<div ${centered}><strong>No character sheet selected in Token settings. API needs restarted. Go to API settings and click "Restart API Sandbox"</strong></div><hr ${breaks} />`;
                 string += (hp) ? `${prefix} HP / HP_Max:</span> ${mods.bar1_value} / ${mods.bar1_max}</div>` : `${prefix} HP / HP_Max:</span> 'hp_max' not found</div>`;
                 string += (ac) ? `${prefix} AC:</span> ${mods.bar2_value}</div>` : `${prefix} AC:</span> 'npc_ac' not found</div>`;
                 string += (link[0]) ? `${prefix} Link Bar 2:</span> 'npc_ac'</div>` : `${prefix} Link Bar 2:</span> 'npc_ac' not found</div>`;
