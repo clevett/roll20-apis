@@ -21,6 +21,9 @@ var handoutFormatter = handoutFormatter || (function() {
                 case 'links':
                     linksHandout();
                     break;
+                case 'format':
+                    formatHandout();
+                    break;
                 default :
                      apiMenu();
                      break;
@@ -52,6 +55,8 @@ var handoutFormatter = handoutFormatter || (function() {
             `<div ${centered}><strong>Handouts Commmands</strong></div>` +
             `<div style="text-align:center;"><a ${astyle2}" href="!handout --links">Handout of Links</a></div>` +
             `<div ${centered}>Creates or updates a handout for linking to other journal items.</div>` +
+            `<div style="text-align:center;"><a ${astyle2}" href="!handout --format">Inject HTML</a></div>` +
+            `<div ${centered}>Pull all handout descriptions and inject them back with html.</div>` +
             `<hr ${breaks} />` +
             `<div ${centered}><strong>Tokens Commands</strong></div>` +
             `<div style="text-align:center;"><a ${astyle2}" href="!token --link --dd">D&D NPC Linker</a></div>` +
@@ -101,16 +106,11 @@ var handoutFormatter = handoutFormatter || (function() {
     },
 
     //== Update a Handout 
-    existingHandout = (name, notes, text) => {
-        const existingHandout = findObjs({
-            name: name
-        });
-        const id      = JSON.stringify(existingHandout).split(`_id":"`)[1].split(`","`)[0];
-        const handout = getObj("handout", id);
+    existingHandout = (handout, notes, text) => {
         handout.set(notes, text);
     },
 
-    //== Createe a new Handout
+    //== Create a new Handout
     newHandout = (name, notes, text) => {
         const avatar  = "https://s3.amazonaws.com/files.d20.io/images/35666065/0hOTGz_lbcziK4anAuVROw/max.png?1499526251";
         const handout = createObj('handout', {
@@ -118,6 +118,30 @@ var handoutFormatter = handoutFormatter || (function() {
             avatar: avatar
         }); 
         handout.set(notes, text);
+    },
+
+    //== Pull handouts with HTML and inject the HTML back in
+    formatHandout = () => {
+        const journalObjects = findObjs({_type: "handout"});
+        let feedback = "", handoutsCreated = 0, handoutsUpdated = 0;
+
+        journalObjects.forEach((handout) => {
+            const name = handout.get('name');
+            const id = handout.id;
+            //log(name);
+
+            ['notes', 'gmnotes'].forEach(notes => {
+                handout.get(`${notes}`, (originalText) => {
+                    log(originalText)
+                    const text = originalText.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;rsquo;/g, "'");
+                    //log(text);
+
+                    if (text != "null") {
+                       existingHandout(handout, notes, text);
+                    }
+                });
+            })
+        });
     },
 
     //== This looks at a Token's Linked character Sheet and set a number of defaults 
