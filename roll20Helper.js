@@ -137,10 +137,10 @@ var handoutFormatter = handoutFormatter || (function() {
                     const ac   = getAttrByName([characterID], 'npc_ac', "current");
                     const link = getCharacterAttr(characterID, `npc_ac`);
 
-                    mods.bar1_value = parseInt(hp);
-                    mods.bar1_max   = parseInt(hp);
-                    mods.bar2_value = parseInt(ac);
-                    mods.bar2_link  = (link[0]) ? link[0].id : "";
+                    if (hp) { mods.bar1_value     = parseInt(hp) };
+                    if (hp) { mods.bar1_max       = parseInt(hp) };
+                    if (ac) { mods.bar2_value     = parseInt(ac) };
+                    if (link[0]) { mods.bar2_link = link[0].id };
                     mods.showname   = true;
 
                     string += `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />`;
