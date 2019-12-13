@@ -6,7 +6,7 @@ var handoutFormatter = handoutFormatter || (function() {
     const astyle2    = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${blue}; border-radius: 4px;  box-shadow: 1px 1px 1px #707070; width: 150px;"`;
     const arrowstyle = `style="border: none; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-left: 195px solid ${gold}; margin: 5px 0px;"`;
     const headstyle  = `style="color: #fff; font-size: 18px; text-align: left; font-constiant: small-caps; font-family: Times, serif; margin-bottom: 2px;"`;
-    const substyle   = 'style="font-size: 11px; line-height: 13px; margin-top: -2px; font-style: italic;"';
+    const substyle   = 'style="font-size: 0.8em; line-height: 13px; margin-top: -2px; font-style: italic;"';
     const breaks     = `style="border-color:${gold}; margin: 5px 2px;"`;
     const label      = `style="color: #c9c9c9; display:inline-block; width: 50%"`;
     const label2     = `style="color: #c9c9c9; display:inline-block; width: 32%"`;
@@ -32,9 +32,8 @@ var handoutFormatter = handoutFormatter || (function() {
                 const system           = args[2];
                 (supportedSystems.includes(system)) ? linkTokens(msg.selected, system) : chatMessage(`<div ${centered}>Game system was not provided. Use !helper for menu.</div>`);
             } else {
-                sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
-                    `<div ${headstyle}>Module Helper</div>` +
-                    `<div ${substyle}>Menu (v.${version})</div>` +
+                sendChat('API', `/w gm <div ${divstyle}>` +
+                    `<div ${headstyle}>API Helper <span ${substyle}>(v.${version})</span></div>` +
                     `<div ${arrowstyle}></div>` +
                     `<div ${centered}>No tokens selected.</div>` +
                     '</div>'
@@ -46,9 +45,8 @@ var handoutFormatter = handoutFormatter || (function() {
     },
 
     apiMenu = () => {
-        sendChat('Module Helper', `/w gm <div ${divstyle}>` +
-                `<div ${headstyle}>Module Helper</div>` +
-                `<div ${substyle}>Menu (v.${version})</div>` +
+        sendChat('API', `/w gm <div ${divstyle}>` +
+                `<div ${headstyle}>API Helper <span ${substyle}>(v.${version})</span></div>` +
                 `<div ${arrowstyle}></div>` +
                 `<div style="text-align:center;"><a ${astyle2} href="!handout --links">Handout of Links</a></div>` +
                 `<hr ${breaks} />` +
@@ -126,82 +124,97 @@ var handoutFormatter = handoutFormatter || (function() {
             const represents = getTokenRepresents(token);
             const characterID = getIDsFromTokens(token);
             const characterName = getAttrByName([characterID], 'character_name');
-            const prefix        = `<div><span style="color:${gold};font-weight:bold;">`
             const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
-            let mods            = {}; 
-            let string          = "";
 
             if (represents[0] != "") {
-                if (system === "dd") {
-                    const hp   = getAttrByName([characterID], 'hp', "max");
-                    const ac   = getAttrByName([characterID], 'npc_ac', "current");
-                    const link = getCharacterAttr(characterID, `npc_ac`);
-
-                    if (hp) { mods.bar1_value     = parseInt(hp) };
-                    if (hp) { mods.bar1_max       = parseInt(hp) };
-                    if (ac) { mods.bar2_value     = parseInt(ac) };
-                    if (link[0]) { mods.bar2_link = link[0].id };
-                    mods.showname   = true;
-
-                    string += `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />`;
-                    string += (hp) ? `${prefix} HP / HP_Max:</span> ${mods.bar1_value} / ${mods.bar1_max}</div>` : `${prefix} HP / HP_Max:</span> 'hp_max' value not found. Set the value on the NPC sheet.</div>`;
-                    string += (ac) ? `${prefix} AC:</span> ${mods.bar2_value}</div>` : `${prefix} AC:</span> 'npc_ac' value not found. Set the value on the NPC sheet.</div>`;
-                    string += (link[0]) ? `${prefix} Link Bar 2:</span> 'npc_ac'</div>` : `${prefix} Link Bar 2:</span> 'npc_ac' attribute not found</div>`;
-                    string += `${prefix} Show Name:</span> ${mods.showname}</div>`
-                } else if (system === "myz") {
-                    const attributes = ["strength", "agility", "mutation"];
-                    attributes.forEach((attr) => {
-                        //Linking bars requires the attribute ID
-                        const link  = getCharacterAttr(characterID, `${attr}`);
-                        const ID    = (link.length === 0) ? false : link[0].id;
-                        //Set value and max of the attribute
-                        const value = getAttrByName([characterID], `${attr}`);
-                        const max   = getAttrByName([characterID], `${attr}`, `${attr}_max`);
-                        //Determien the bar based on the position in array
-                        const num   = parseInt(attributes.indexOf(`${attr}`)) + 1;
-
-                        mods[`bar${num}_value`] = value || 0;
-                        mods[`bar${num}_max`]   = (attr === "mutation") ? 10 : max || 0;
-                        (ID) ? mods[`bar${num}_link`]  = ID : log(`Linked attribute not found for bar${num}`);
-                    });
-
-                    mods.showname         = true;
-                    mods.showplayers_bar1 = true;
-                    mods.showplayers_bar2 = true;
-
-                    string += `<div ${centered}><strong>${characterName}</strong></div><div ${centered}>Str: ${mods.bar1_value} / ${mods.bar1_max}</div><div ${centered}>Agi: ${mods.bar2_value} / ${mods.bar2_max}</div><div ${centered}>Mutation Points: ${mods.bar3_value} / ${mods.bar3_max}</div><div ${centered}>Show Name: ${mods.showname}</div><div ${centered}>Show Bar 1: ${mods.showplayers_bar1}</div><div ${centered}>Show Bar 2: ${mods.showplayers_bar2}</div><div ${centered}>Link Bar 1: Strength</div><div ${centered}>Link Bar 2: Agility</div><div ${centered}>Link Bar 3: Mutation</div>`
-                } else if (system === "sodl") {
-                    const hp   = getAttrByName([characterID], 'damage', "max");
-                    const ac   = getAttrByName([characterID], 'defense', "current");
-
-                    if (hp) { mods.bar3_value     = 0 };
-                    if (hp) { mods.bar3_max       = parseInt(hp) };
-                    if (ac) { mods.bar2_value     = parseInt(ac) };
-                    mods.showname   = true;
-
-                    string += `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />`;
-                    string += (hp) ? `${prefix} Damage:</span> ${mods.bar3_value} / ${mods.bar3_max}</div>` : `${prefix} Damage:</span> 'damage' value not found. Set the value on the character sheet.</div>`;
-                    string += (ac) ? `${prefix} Defense:</span> ${mods.bar2_value}</div>` : `${prefix} Defense:</span> 'npc_ac' value not found. Set the value on the NPC sheet.</div>`;
-                    string += `${prefix} Show Name:</span> ${mods.showname}</div>`
-                } else {
-                    string += `<div ${centered}><strong>Finished (System Not Supported)</strong></div>`
-                };
+                const update = 
+                    (system === "dd") ? linkDDToken(characterID) :
+                    (system === "myz") ?  linkMYZToken(characterID) :
+                    (system === "sodl") ? linkSODLToken(characterID) :
+                    false;
 
                 //Set the default token for the represented character sheet
                 const tokenGet = getObj("graphic", tokenID);
-                const repChar  = getObj('character', characterID);
-                if (mods) {
-                    tokenGet.set(mods);
-                    setDefaultTokenForCharacter(repChar,tokenGet);
+                const representsCharacter  = getObj('character', characterID);
+                if (update) {
+                    tokenGet.set(update);
+                    setDefaultTokenForCharacter(representsCharacter, tokenGet);
+                    userFeedback(update, characterName);
                 } else {
-                    log("Mods not found"); 
-                }; 
-
-                chatMessage(`${string}`);
+                    log("Update not found"); 
+                };
             } else {
                 chatMessage(`<div>Token does not represents a character. Set a character in the Token settings.</div>`);
             }
         });
+    },
+
+    //D&D NPC TOKEN Linker
+    linkDDToken = (characterID) => {
+        const hp   = getAttrByName([characterID], 'hp', "max");
+        const ac   = getAttrByName([characterID], 'npc_ac', "current");
+        const link = getCharacterAttr(characterID, `npc_ac`);
+        let update = {};
+
+        if (hp) { update.bar1_value = parseInt(hp) };
+        if (hp) { update.bar1_max = parseInt(hp) };
+        if (ac) { update.bar2_value = parseInt(ac) };
+        if (link[0]) { update.bar2_link = link[0].id };
+        update.showname   = true;
+
+        return update
+    },
+
+    //MUTANT YEAR ZERO TOKEN Linker
+    linkMYZToken = (characterID) => {
+        const attributes = ["strength", "agility", "mutation"];
+        let update = {}; 
+
+        attributes.forEach((attr) => {
+            //Linking bars requires the attribute ID
+            const link  = getCharacterAttr(characterID, `${attr}`);
+            const ID    = (link.length === 0) ? false : link[0].id;
+            //Set value and max of the attribute
+            const value = getAttrByName([characterID], `${attr}`);
+            const max   = getAttrByName([characterID], `${attr}`, `${attr}_max`);
+            //Determien the bar based on the position in array
+            const num   = parseInt(attributes.indexOf(`${attr}`)) + 1;
+
+            update[`bar${num}_value`] = value || 0;
+            update[`bar${num}_max`]   = (attr === "mutation") ? 10 : max || 0;
+            (ID) ? update[`bar${num}_link`]  = ID : log(`Linked attribute not found for bar${num}`);
+        });
+
+        update.showname         = true;
+        update.showplayers_bar1 = true;
+        update.showplayers_bar2 = true;
+
+        return update
+    },
+
+    //SHADOWS OF DEMON LORD TOKEN LINKER
+    linkSODLToken = (characterID) => {
+        const hp   = getAttrByName([characterID], 'damage', "max");
+        const ac   = getAttrByName([characterID], 'defense', "current");
+        let update = {}; 
+
+        if (hp) { update.bar3_value = 0 };
+        if (hp) { update.bar3_max   = parseInt(hp) };
+        if (ac) { update.bar2_value = parseInt(ac) };
+        update.showname   = true;
+
+        return update
+    },
+
+    //TOKEN LINKER USER FEEDBACK IN CHAT
+    userFeedback = (update, characterName) => {
+        let string = `<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} />`;
+        const entries = Object.entries(update);
+        for (const [key, value] of entries) {
+          string += `<div><span style="color:${gold};font-weight:bold;"> ${key} :</span> ${value}</div>`
+        };
+
+        chatMessage(`${string}`);
     },
 
     //Used to verify a token represents a character before trying to Link Tokens.
@@ -227,10 +240,9 @@ var handoutFormatter = handoutFormatter || (function() {
     },
 
     chatMessage = (feedback) => {
-        sendChat('Module Helper', '/w gm <div ' + divstyle + '>' +
-            `<div ${headstyle}>Module Helper</div>` +
-            `<div ${substyle}>Menu (v.${version})</div>` +
-            '<div ' + arrowstyle + '></div>' +
+        sendChat('API', `/w gm <div ${divstyle}>` +
+            `<div ${headstyle}>API Helper <span ${substyle}>(v.${version})</span></div>` +
+            `<div ${arrowstyle}></div>` +
             feedback +
             '</div>'
         );
