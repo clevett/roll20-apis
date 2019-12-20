@@ -1,0 +1,525 @@
+// API Commands:
+// !cal - for the GM displays the menu in the chat window, for a player displays date, weather, moon and down days
+
+
+var Calendar = Calendar || (function() {
+    'use strict';
+    const blue = '#063e62', gold = '#b49e67', red = `#8f1313`;
+    const divstyle   = 'style="color: #eee;width: 90%; border: 1px solid black; background-color: #131415; padding: 5px;"';
+    const astyle1    = `style="text-align:center; border: 1px solid black; margin: 1px; padding: 2px; background-color: ${blue}; border-radius: 4px;  box-shadow: 1px 1px 1px #707070; width: 100px;`;
+    const astyle2    = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${blue}; border-radius: 4px;  box-shadow: 1px 1px 1px #707070; width: 150px;"`;
+    const arrowstyle = `style="border: none; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-left: 195px solid ${gold}; margin: 5px 0px;"`;
+    const headstyle  = `style="color: #fff; font-size: 18px; text-align: left; font-constiant: small-caps; font-family: Times, serif; margin-bottom: 2px;"`;
+    const substyle   = 'style="font-size: 11px; line-height: 13px; margin-top: -2px; font-style: italic;"';
+    const breaks     = `style="border-color:${gold}; margin: 5px 2px;"`;
+    const label      = `style="color: #c9c9c9; display:inline-block; width: 50%"`;
+    const label2     = `style="color: #c9c9c9; display:inline-block; width: 32%"`;
+    const centered   = `style="text-align:center;"`;
+    const tablestyle = 'style="border: none;"';
+    const tdstyle = 'style="padding: 2px; padding-left: 5px; border: none;"';
+    const version = '3.0.0',
+    
+    setDefaults = function() {
+        state.Calendar = {
+            now: {
+                version: "3.0.0",
+				world: 1,
+                ordinal: 1,
+                year: 888,
+                weather: "It is a cool but sunny day.",
+                startdate: "1,Hammer,1486"
+            },
+        };
+    },
+    
+    checkDefaults = function() {
+        if( ! state.Calendar.now.version){state.Calendar.now.version = "3.0.0"};
+        if( ! state.Calendar.now.world){state.Calendar.now.world = 1};
+        if( ! state.Calendar.now.ordinal){state.Calendar.now.ordinal = 1};
+        if( ! state.Calendar.now.year){state.Calendar.now.year = 888};
+        if( ! state.Calendar.now.weather){state.Calendar.now.weather = "It is a cool but sunny day."};
+        if( ! state.Calendar.now.startdate){state.Calendar.now.startdate = "1,Hammer,1486"};
+    },
+    
+    handleInput = function(msg) {
+        var args = msg.content.split(",");
+        
+        if (msg.type !== "api") {
+			return;
+		}
+		
+		if(playerIsGM(msg.playerid)){
+		    switch(args[0]) {
+		        case '!cal':
+                    calmain();
+                    break;
+                case '!settings':
+                    calmenu();
+                    break;
+                case '!startdate':
+                    state.Calendar.now.startdate=args[1]+','+args[2]+','+args[3];
+                    calmenu();
+                    break;
+                case '!setday':
+                    getModernOrdinal(msg);
+                    weather();
+                    calmenu();
+                    break;
+                case '!setmonth':
+                    getModernOrdinal(msg);
+                    weather();
+                    calmenu();
+                    break;
+                case '!setyear':
+                    state.Calendar.now.year=args[1];
+                    calmenu();
+                    break;
+                case '!setordinal':
+                    state.Calendar.now.ordinal=args[1];
+                    calmenu();
+                    break;
+                case '!addday':
+                    addday(args[1]);
+                    weather();
+                    calmenu();
+                    break;
+                case '!weather':
+                    if(args[1]=='Roll}'){
+                        weather();
+                    }else{
+                        var string = args[1];
+                        for (var i = 2; i < args.length; i++) {
+                            string = string + ", " + args[i];
+                        }
+                        state.Calendar.now.weather = string;
+                    }
+                    calmenu();
+                    break;
+                case '!playercal':
+                    showcal(msg);
+                    break;
+    	    }
+		}else if(args[0]=='!cal'){
+		    showcal(msg);
+		}
+    },
+    
+    calmenu = function() {
+        var world = getworld();
+        var moMenu = getMoMenu();
+        var ordinal = state.Calendar.now.ordinal;
+        
+        var nowdate = getModernDate(ordinal).split(',');
+        var month = nowdate[0];
+        var day = nowdate[1];
+        
+        var moon = getGreyhawkMoon(); 
+        
+        var start = state.Calendar.now.startdate.split(',');
+        var startdate = start[0]+getsuffix(start[0])+' '+start[1]+', '+start[2];
+        
+        sendChat('Calendar', '/w gm <div ' + divstyle + '>' + //--
+            `<div ${headstyle}>Calendar</div>` + //--
+            '<div ' + substyle + '>Menu</div>' + //--
+            `<div ${arrowstyle}></div>` + //--
+            '<table>' + //--
+            '<tr><td>Start Date: </td><td><a ' + astyle1 + '" href="!startdate,?{Day},?{Month},?{Year|888}">' + startdate + '</a></td></tr>' + //--
+            '<tr><td>Day: </td><td><a ' + astyle1 + '" href="!setday,?{Day?|1},' + month +'">' + day + '</a></td></tr>' + //--
+            '<tr><td>Month: </td><td><a ' + astyle1 + '" href="!setmonth,' + day + moMenu + month + '</a></td></tr>' + //--
+            '<tr><td>Year: </td><td><a ' + astyle1 + '" href="!setyear,?{Year?|888}">' + state.Calendar.now.year + '</a></td></tr>' + //--
+            '<tr><td>Ordinal: </td><td><a ' + astyle1 + '" href="!setordinal,?{Ordinal?|1}">' + state.Calendar.now.ordinal + '</a></td></tr>' + //--
+            '</table>' + //--
+            '<br>Weather: ' + state.Calendar.now.weather + //--
+            '<br><br>' + moon + //--
+            '<br><br><div style="text-align:center;"><a ' + astyle2 + '" href="!addday,?{Days to add?|1}">Advance the Date</a></div>' + //--
+            '<div style="text-align:center;"><a ' + astyle2 + '" href="!weather,?{Weather|Roll|Edit,?{Edit Weather}}">Change Weather</a></div>' + //--
+            '<div style="text-align:center;"><a ' + astyle2 + '" href="!playercal">Show to Players</a></div>' + //--
+            '</div>'
+        );
+    },
+
+    calmain = () => {
+        const moon = getGreyhawkMoon();
+        const ordinal = state.Calendar.now.ordinal;
+        const nowdate = getModernDate(ordinal).split(',');
+        var month = nowdate[0];
+        var day = nowdate[1];
+        var suffix = getsuffix(day);
+        var start = state.Calendar.now.startdate.split(',');
+        var startdate = start[0]+getsuffix(start[0])+' '+start[1]+', '+start[2];
+        
+        sendChat('Calendar', '/w gm <div ' + divstyle + '>' + //--
+            `<div ${headstyle}>Calendar</div>` + //--
+            `<div ${substyle}>Menu (v.${state.Calendar.now.version})</div>` + //--
+            `<div ${arrowstyle}></div>` + //--
+            '<table ' + tablestyle + '>' + //--
+            '<tr><td ' + tdstyle + '>Date: </td><td ' + tdstyle + '>' + day + suffix + ' day of ' + month +  ', ' + state.Calendar.now.year + '</td></tr>' + //--
+            '<tr><td ' + tdstyle + '>Moon: </td><td ' + tdstyle + '>' + moon + //--
+            '</table>' + //--
+            'Weather: ' + state.Calendar.now.weather + //--
+            '<br><br><div style="text-align:center;"><a ' + astyle2 + '" href="!addday,?{Days to add?|1}">Advance the Date</a></div>' + //--
+            '<div style="text-align:center;"><a ' + astyle2 + '" href="!weather,?{Weather|Roll|Edit,?{Edit Weather}}">Change Weather</a></div>' + //--
+            '<div style="text-align:center;"><a ' + astyle2 + '" href="!playercal">Show to Players</a></div>' + //--
+            '<div style="text-align:center;"><a ' + astyle2 + '" href="!settings">Settings</a></div>' + //--
+            '</div>'
+        );
+    },
+    
+    showcal = function(msg) {
+        var ordinal = state.Calendar.now.ordinal;
+        var nowdate = getModernDate(ordinal).split(',');
+        var month = nowdate[0];
+        var day = nowdate[1];
+        var suffix = getsuffix(day);
+        var world = getworld();
+        var moon = getGreyhawkMoon(); 
+        
+        sendChat(msg.who, '<div ' + divstyle + '>' + //--
+            `<div ${headstyle}>Calendar</div>` + //--
+            `<div ${arrowstyle}></div>` + //--
+            day + suffix + ' day of ' + month + ', ' + state.Calendar.now.year + //--
+            '<br><br>Today\'s weather:<br>' + state.Calendar.now.weather + //--
+            '<br><br>' + moon
+        );
+    },
+    
+    getworld = function() {
+        var num = Number(state.Calendar.now.world);
+        var world = 'Modern';
+        
+        return world;
+    },
+    
+    getMoMenu = function() {
+        var world = Number(state.Calendar.now.world);
+        var moMenu = ',?{Month|1st Month|2nd Month|3rd Month|4th Month|5th Month|6th Month|7th Month|8th Month|9th Month|10th Month|11th Month|12th Month}">';
+        
+        return moMenu;
+    },
+
+    getModernDate = function(options){
+        var day = Number(options);
+        var date;
+        var month;
+        
+        if(day>0 && day<=28){
+            month="1st Month"; 
+            date=day;
+        }else if(day<= 56){
+            month="2nd Month"; 
+            date=day-28;
+        }else if(day<=84){
+            month="3rd Month"; 
+            date=day-56;
+        }else if(day<=112){
+            month="4th Month";
+            date=day-84;
+        }else if(day<=140){
+            month="5th Month";
+            date=day-112;
+        }else if(day<=168){
+            month="6th Month";
+            date=day-140;
+        }else if(day<=196){
+            month="7th Month";
+            date=day-168;
+        }else if(day<=224){
+            month="8th Month";
+            date=day-196;
+        }else if(day<=252){
+            month="9th Month";
+            date=day-224;
+        }else if(day<=280){
+            month="10th Month";
+            date=day-252;
+        }else if(day<=308){
+            month="11th Month"
+            date=day-280;
+        }else if(day<=336){
+            month="12th Month";
+            date=day-308;
+        }else{
+            month="1st Month";
+            date='1';
+        }
+    
+        var array=month+','+String(date);
+        return array;    
+    },
+    
+    getModernOrdinal = function(options){
+        var args = options.content.split(",");
+        var date = Number(args[1]);
+        var month = args[2];
+        var ordinal = state.Calendar.now.ordinal;
+        
+        switch(month) {
+            case '1st Month':
+                ordinal = date;
+                break;
+            case '2nd Month':
+                ordinal = 28+date;
+                break;
+            case '3rd Month':
+                ordinal = (28*2)+date;
+                break;
+            case '4th Month':
+                ordinal = (28*3)+date;
+                break;
+            case '5th Month':
+                ordinal = (28*4)+date;
+                break;
+            case '6th Month':
+                ordinal = (28*5)+date;
+                break;
+            case '7th Month':
+                ordinal = (28*6)+date;
+                break;
+            case '8th Mont':
+                ordinal = (28*7)+date;
+                break;
+            case '9th Month':
+                ordinal = (28*8)+date;
+                break;
+            case '10th Month':
+                ordinal = (28*9)+date;
+                break;
+            case '11th Month':
+                ordinal = (28*10)+date;
+                break;
+            case '12th Month':
+                ordinal = (28*11)+date;
+                break;
+            }
+        state.Calendar.now.ordinal = ordinal;
+    },
+    
+    addday = function(no){
+        var days = Number(no);
+        let ordinal = Number(state.Calendar.now.ordinal);
+        ordinal = ordinal+days;
+
+        if (ordinal > 336) {
+            ordinal=ordinal-336;
+            state.Calendar.now.year = Number(state.Calendar.now.year)+1;
+        }
+
+        state.Calendar.now.ordinal = ordinal;
+    },
+    
+    getsuffix = (day) => {
+        var date = Number(day);
+        var suffix = (date == 1 || date == 21 ) ? 'st' : (date == 2 || date == 22) ? 'nd' : (date == 3 || date == 23) ? 'rd' : 'th';
+        
+        return suffix;
+    },
+    
+    d6  = () => { return Math.floor(Math.random() * 5) + 1; },
+
+    weather = function() {
+        var roll;
+        var temperature;
+        var wind;
+        var precipitation;
+        var ordinal = state.Calendar.now.ordinal;
+
+        const season = (ordinal > 308 || ordinal <= 28) ? 'Winter' : 
+                     (ordinal > 28 && ordinal <= 140) ? 'Spring' : 
+                     (ordinal > 140 && ordinal <= 224) ? 'Summer' : 'Fall'
+
+        roll = Math.floor(Math.random()*(20-1+1)+1);
+        if(roll>=15 && roll<=17){
+            switch(season) {
+                case 'Winter':
+                    temperature = 'It is a bitterly cold winter day. ';
+                    break;
+                case 'Spring':
+                    temperature = 'It is a cold spring day. ';
+                    break;
+                case 'Summer':
+                    temperature = 'It is a cool summer day. ';
+                    break;
+                case 'Fall':
+                    temperature = 'It is a cold fall day. ';
+                    break;
+            }
+        }else if(roll>=18 && roll<=20){
+            switch(season) {
+                case 'Winter':
+                    temperature = 'It is a warm winter day. ';
+                    break;
+                case 'Spring':
+                    temperature = 'It is a hot spring day. ';
+                    break;
+                case 'Summer':
+                    temperature = 'It is a blisteringly hot summer day. ';
+                    break;
+                case 'Fall':
+                    temperature = 'It is a hot fall day. ';
+                    break;
+            }
+        }else{
+            switch(season) {
+                case 'Winter':
+                    temperature = 'It is a cold winter day. ';
+                    break;
+                case 'Spring':
+                    temperature = 'It is a mild spring day. ';
+                    break;
+                case 'Summer':
+                    temperature = 'It is a hot summer day. ';
+                    break;
+                case 'Fall':
+                    temperature = 'It is a mild fall day. ';
+                    break;
+            }  
+        }
+        
+        roll = Math.floor(Math.random()*(20-1+1)+1);
+        if(roll>=15 && roll<=17){
+            wind='There is a light breeze and ';
+        }else if(roll>=18 && roll<=20){
+            wind='There is a howling wind and ';
+        }else{
+            wind='The air is still and ';
+        }
+        
+        roll = Math.floor(Math.random()*(20-1+1)+1);
+        if(roll>=15 && roll<=17){
+            precipitation="Light rain or snow.";
+            if(season=='Winter'){
+                precipitation = 'snow falls softly on the ground.';
+            }else{
+                precipitation = 'a light rain falls from the sky.';
+            }
+        }else if(roll>=18 && roll<=20){
+            if(season=='Winter'){
+                precipitation = 'snow falls thick and fast from the sky.';
+            }else{
+                precipitation = 'a torrential rain begins to fall.';
+            }
+        }else{
+            roll = Math.floor(Math.random()*(2-1+1)+1);
+            if(roll=1){
+                precipitation = 'the sky is overcast.';
+            }else{
+                precipitation = 'the sky is clear.';
+            }
+        }
+        
+        var forecast=temperature+wind+precipitation;
+        state.Calendar.now.weather = forecast;
+    },
+
+    getGreyhawkMoon = function() {
+        var ordinal = Number(state.Calendar.now.ordinal);
+        var lunaArray = '0,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7,7,8,8,9,10,10,11,12,12,13,13,14,14,15,15,16,16,1,2,2,3,4,4,5,5,6,6,7';
+
+        var lunaNO = lunaArray.split(",");
+        var lunaImg = lunaNO[ordinal];
+        var Luna = getMoon(lunaImg);
+
+        var moon = '<img src="'+Luna+'" style="width:40px;height:40px;"></td></tr>';
+        
+        return moon;
+    },
+    
+    getMoon = function(moonNo) {
+        var args  = moonNo;
+        var moon;
+        
+        switch(args) {
+            case '1':
+                // moon = 'Full Moon';
+                moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Twemoji_1f315.svg/512px-Twemoji_1f315.svg.png';
+                break;
+            case '2':
+                // moon = 'Waning Gibbous';
+                moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Twemoji_1f316.svg/512px-Twemoji_1f316.svg.png';
+                break;
+            case '3':
+                // moon = 'Waning Gibbous';
+                moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Twemoji_1f316.svg/512px-Twemoji_1f316.svg.png';
+                break;
+            case '4':
+                // moon = 'Waning Gibbous';
+                moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Twemoji_1f316.svg/512px-Twemoji_1f316.svg.png';
+                break;
+            case '5':
+                // moon = 'Last Quarter';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Twemoji_1f317.svg/512px-Twemoji_1f317.svg.png';
+                break;
+            case '6':
+                // moon = 'Waning Crescent';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Twemoji_1f318.svg/512px-Twemoji_1f318.svg.png';
+                break;
+            case '7':
+                // moon = 'Waning Crescent';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Twemoji_1f318.svg/512px-Twemoji_1f318.svg.png';
+                break;
+            case '8':
+                // moon = 'Waning Crescent';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Twemoji_1f318.svg/512px-Twemoji_1f318.svg.png';
+                break;
+            case '9':
+                // moon = 'New Moon';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Twemoji_1f311.svg/512px-Twemoji_1f311.svg.png';
+                break;
+            case '10':
+                // moon = 'Waxing Crescent';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Twemoji_1f312.svg/512px-Twemoji_1f312.svg.png';
+                break;
+            case '11':
+                // moon = 'Waxing Crescent';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Twemoji_1f312.svg/512px-Twemoji_1f312.svg.png';
+                break;
+            case '12':
+                // moon = 'Waxing Crescent';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Twemoji_1f312.svg/512px-Twemoji_1f312.svg.png';
+                break;
+            case '13':
+                // moon = 'First Quarter';
+                moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Twemoji_1f313.svg/512px-Twemoji_1f313.svg.png';
+                break;
+            case '14':
+                // moon = 'Waxing Gibbous';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Twemoji_1f314.svg/512px-Twemoji_1f314.svg.png';
+                break;
+            case '15':
+                // moon = 'Waxing Gibbous';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Twemoji_1f314.svg/512px-Twemoji_1f314.svg.png';
+                break;
+            case '16':
+                // moon = 'Waxing Gibbous';
+            moon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Twemoji_1f314.svg/512px-Twemoji_1f314.svg.png';
+                break;
+        }
+        
+        return moon;
+    },
+    
+    checkInstall = function() {
+        if( ! state.Calendar.now.version ) {
+            setDefaults();
+        }
+        
+        if ( state.Calendar.now.version != version ){
+            checkDefaults();
+        }
+    },
+    
+    registerEventHandlers = function() {
+        on('chat:message', handleInput);
+	};
+
+	return {
+	    CheckInstall: checkInstall,
+		RegisterEventHandlers: registerEventHandlers
+	};
+}());
+
+on("ready",function(){
+	'use strict';
+	Calendar.CheckInstall();
+	Calendar.RegisterEventHandlers();
+});
