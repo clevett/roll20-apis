@@ -24,7 +24,7 @@ var sr5api = sr5api || (function() {
                 args[2] === 'link' && msg.selected != undefined ? linkTokens(msg.selected) : args[2] === 'link' ? chatMessage(noTokensSelected) : apiMenu();
                 break;
               case "init":
-                args[2] === 'counter' ? initiativeCounter() : args[2] === 'roll' && msg.selected != undefined ? rollInitiave() : args[2] === 'roll' && msg.selected === undefined  ? chatMessage(noTokensSelected) : apiMenu();
+                args[2] === 'counter' ? initiativeCounter() : args[2] === 'roll' && msg.selected != undefined ? rollInitiave(msg.selected) : args[2] === 'roll' && msg.selected === undefined  ? chatMessage(noTokensSelected) : apiMenu();
                 break;
               default:
                 apiMenu()
@@ -186,9 +186,25 @@ var sr5api = sr5api || (function() {
         });
     },
 
+    rollInitiave = selected => {
+        selected.forEach(token => {
+            try {
+                const characterID = getIDsFromTokens(token);
+                const characterName = getAttrByName([characterID], 'character_name');
+                const tokenID  = token._id;
+                const sheetType  = getAttrByName([characterID], 'sheet_type');
+
+                const intiativeType = sheetType === "sprite" || sheetType === "host" || sheetType === "vehicle" ? 'matrix' : 'initiative';
+                const mod  = getAttrByName([characterID], `${intiativeType}_mod`);
+                const dice = getAttrByName([characterID], `${intiativeType}_dice`);
+            } catch (error) {
+                log(`rollInitiave: ${error}`);
+            }
+        });
+    },
 
     //Send message to chat
-    chatMessage = (feedback) => {
+    chatMessage = feedback => {
         sendChat('API', `/w gm <div ${divstyle}>` +
             `<div ${headstyle}>Shadowrun 5th Edition <span ${substyle}>(v.${version})</span></div>` +
             `<div ${arrowstyle}></div>` +
