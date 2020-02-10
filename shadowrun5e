@@ -1,0 +1,212 @@
+var sr5api = sr5api || (function() {
+    'use strict';
+    const primary = '#610b0d', secondary = '#666', third = '#e7e6e5';
+    const divstyle   = 'style="color: #eee;width: 90%; border: 1px solid black; background-color: #131415; padding: 5px;"';
+    const astyle1    = `style="text-align:center; border: 1px solid black; margin: 1px; padding: 2px; background-color: ${primary}; border-radius: 4px;  box-shadow: 1px 1px 1px ${secondary}; width: 100px;`;
+    const astyle2    = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${primary}; border-radius: 4px;  box-shadow: 1px 1px 1px ${secondary}; width: 150px;"`;
+    const arrowstyle = `style="border: none; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-left: 195px solid ${secondary}; margin: 5px 0px;"`;
+    const headstyle  = `style="color: #fff; font-size: 18px; text-align: left; font-constiant: small-caps; font-family: Times, serif; margin-bottom: 2px;"`;
+    const substyle   = 'style="font-size: 0.8em; line-height: 13px; margin-top: -2px; font-style: italic;"';
+    const breaks     = `style="border-color:${third}; margin: 5px 2px;"`;
+    const label      = `style="color: #c9c9c9; display:inline-block; width: 50%"`;
+    const label2     = `style="color: #c9c9c9; display:inline-block; width: 32%"`;
+    const centered   = `style="text-align:center;"`;
+    const version    = '1';
+
+    const handleInput = (msg) => {
+        const args = msg.content.split(" --");
+        if (msg.type !== "api") { return; }
+        log(args);
+        if (args[0] === "!sr5") {
+            const noTokensSelected = `<div ${centered}>No tokens selected.</div>`;
+            switch(args[1]) {
+              case "token":
+                args[2] === 'link' && msg.selected != undefined ? linkTokens(msg.selected) : args[2] === 'link' ? chatMessage(noTokensSelected) : apiMenu();
+                break;
+              case "init":
+                args[2] === 'counter' ? initiativeCounter() : args[2] === 'roll' && msg.selected != undefined ? rollInitiave() : args[2] === 'roll' && msg.selected === undefined  ? chatMessage(noTokensSelected) : apiMenu();
+                break;
+              default:
+                apiMenu()
+            }
+        }
+    },
+
+    apiMenu = () => {
+        let feedback = ""
+        feedback += `<div ${centered}><a ${astyle2} href="!sr5 --token --link">Link Tokens</a></div>`
+        feedback += `<div ${centered}>Tokens must represent a character sheet.</div>`
+        feedback += `<hr ${breaks} />`
+        feedback += `<div ${centered}><a ${astyle2} href="!sr5 --init --counter">Initiative Counter</a></div>`
+        feedback += `<div ${centered}>Adds an entry to track initiative passes. When it returns to top of tracker it will subtract all entries by 10.</div>`
+        feedback += `<div ${centered}><a ${astyle2} href="!sr5 --init --roll">Roll Initiative</a></div>`
+        feedback += `<div ${centered}>Roll intiative for all selected tokens</div>`
+        
+        chatMessage(feedback);
+    },
+
+    //== This looks at a Token's Linked character Sheet and set a number of defaults 
+    linkTokens = selected => {
+        selected.forEach(token => {
+            const represents = getTokenRepresents(token);
+            const characterID = getIDsFromTokens(token);
+            const characterName = getAttrByName([characterID], 'character_name');
+            const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
+
+            if (represents[0] != "") {
+                const update = tokenLinker(characterID);
+
+                //Set the default token for the represented character sheet
+                const tokenGet = getObj("graphic", tokenID);
+                const representsCharacter  = getObj('character', characterID);
+                if (update) {
+                    tokenGet.set(update);
+                    setDefaultTokenForCharacter(representsCharacter, tokenGet);
+                    chatMessage(`<div ${centered}><strong>${characterName}</strong></div><hr ${breaks} /><div>Token defaults set.</div>`);
+                } else {
+                    log("Update not found"); 
+                };
+            } else {
+                chatMessage(`<div>Token does not represents a character. Set a character in the Token settings.</div>`);
+            }
+        });
+    },
+
+    tokenLinker = characterID => {
+        try {
+            const sheetType  = getAttrByName([characterID], 'sheet_type');
+            let update = {}; 
+
+            update[`bar1_value`] = 0;
+            update[`bar2_value`] = 0;
+            update[`bar3_value`] = 0;
+
+            const bar1Attribute = sheetType === "grunt" || sheetType === "pc" ? "stun" : sheetType === "vehicle" || sheetType === "host" || sheetType === "sprite" ? "matrix" : false;
+            const bar3Attribute = sheetType === "grunt" || sheetType === "pc" || sheetType === "vehicle" ? "physical" : false;
+
+            update[`bar1_max`] = bar1Attribute ? getAttrByName([characterID], `${bar1Attribute}`, "max") || 0 : "";
+            update[`bar3_max`] = bar3Attribute ? getAttrByName([characterID], `${bar3Attribute}`, "max") || 0 : "";
+
+            if (sheetType === 'pc') {
+                ['stun', 'physical'].forEach(attr => {
+                    const link = getCharacterAttr(characterID, `${attr}`);
+                    const num = attr === 'stun' ? 1 : 3;
+                    link[0] ? update[`bar${num}_link`] = link[0].id : log(`Linked attribute not found for bar${num}`);
+                });
+            } else {
+                update[`bar1_link`] = "";
+                update[`bar2_link`] = "";
+                update[`bar3_link`] = "";
+            }
+
+            update.showname         = true;
+            update.showplayers_bar1 = true;
+            update.showplayers_bar2 = true;
+            update.showplayers_bar3 = true;
+
+            return update
+        } catch (error) {
+            log(`tokenLinker: ${error}`);
+        };
+    },
+
+    //Used to verify a token represents a character before trying to Link Tokens.
+    getTokenRepresents = (selectedToken) => {
+        return [selectedToken].map(obj => getObj("graphic", obj._id))
+            .map(token => token.get("represents"));
+    },
+
+    //Used to get character attributes for Linking Tokens
+    getIDsFromTokens = (selectedToken) => {
+        return [selectedToken].map(obj => getObj("graphic", obj._id))
+            .filter(x => !!x)
+            .map(token => token.get("represents"))
+            .filter(id => getObj("character", id || ""));
+    },
+
+    //Get the Character's Attribute
+    getCharacterAttr = (characterID, name) => {
+        return findObjs({   
+            characterid : characterID,
+            "name": name
+        });
+    },
+
+    //Intiative Counter
+    initiativeCounter = () => {
+        let iniobj = {
+            to: [],
+            check: '',
+            idx: 0
+        };
+
+        let addini = (oTurnOrder) => {
+            oTurnOrder.unshift({
+                id: '-1',
+                pr: '1',
+                custom: 'Initiative Pass'
+            });
+            Campaign().set("turnorder", JSON.stringify(oTurnOrder));
+        };
+
+        const inicheck = () => {
+            iniobj.po = iniobj.to;
+            iniobj.to = JSON.parse(Campaign().get('turnorder'));
+            iniobj.check = _.find(iniobj.to, function(obj) { return obj.custom == 'Initiative Pass'});
+            iniobj.idx = iniobj.to.indexOf(iniobj.check);
+        };
+
+        //Open Tracker if not open
+        if (Campaign().get('initiativepage') === false) {
+            Campaign().set('initiativepage', true);
+        };
+
+        //Setup iniobj
+        inicheck();
+
+        //Create "Initiative Pass" if it doesn't exist otherwise start a new turn
+        if(iniobj.check === undefined){
+            addini(iniobj.to);
+        }  else {
+            iniobj.to.splice(iniobj.idx, 1);
+            addini(iniobj.to);
+        };
+
+        //Check for iniobj to make it to top of tracker
+        on('change:campaign:turnorder', function() {
+            inicheck();
+            if(iniobj.idx === 0 && (_.isArray(iniobj.to) && _.isArray(iniobj.po) && !_.isEqual(iniobj.to[0],iniobj.po[0]) ) || (_.isArray(iniobj.to) && ! _.isArray(iniobj.po))){
+                iniobj.to[0].pr++;
+                for (var i = 1; i < iniobj.to.length; i++) {
+                    iniobj.to[i].pr-=10;
+                    iniobj.to[i].pr = iniobj.to[i].pr < 0 ? 0 : iniobj.to[i].pr;
+                };
+                Campaign().set("turnorder", JSON.stringify(iniobj.to));
+            };
+        });
+    },
+
+
+    //Send message to chat
+    chatMessage = (feedback) => {
+        sendChat('API', `/w gm <div ${divstyle}>` +
+            `<div ${headstyle}>Shadowrun 5th Edition <span ${substyle}>(v.${version})</span></div>` +
+            `<div ${arrowstyle}></div>` +
+            feedback +
+            '</div>'
+        );
+    },
+
+    registerEventHandlers = () => {
+        on('chat:message', handleInput);
+    };
+
+    return {
+        RegisterEventHandlers: registerEventHandlers
+    };
+}());
+
+on("ready",() => {
+    'use strict';
+    sr5api.RegisterEventHandlers();
+});
