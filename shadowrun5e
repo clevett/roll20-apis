@@ -13,11 +13,9 @@ var sr5api = sr5api || (function() {
     const centered   = `style="text-align:center;"`;
     const version    = '1';
 
-    const handleInput = (msg) => {
+    const handleInput = msg => {
         const args = msg.content.split(" --");
-        if (msg.type !== "api") { return; }
-        log(args);
-        if (args[0] === "!sr5") {
+        if (args[0] === "!sr5" && msg.type !== api) {
             const noTokensSelected = `<div ${centered}>No tokens selected.</div>`;
             switch(args[1]) {
               case "token":
@@ -29,6 +27,8 @@ var sr5api = sr5api || (function() {
               default:
                 apiMenu()
             }
+        } else if (msg.inlinerolls) {
+            reRollDice(msg);
         }
     },
 
@@ -203,6 +203,17 @@ var sr5api = sr5api || (function() {
         });
     },
 
+    //Reroll Failures
+    reRollDice = msg => {
+        const diceIndex = msg.content.split('{{dice=$[[')[1].split(']]}}')[0];
+        const numberDiceRolled = msg.inlinerolls[`${diceIndex}`].results.rolls[0].dice;
+        const successTotal = msg.inlinerolls[`${diceIndex}`].results.total;
+        const reRollDice = numberDiceRolled - successTotal;
+
+        //DO I create a button with the API?
+        //Do I set a sheet atttribue and link a button to roll it?
+    },
+    
     //Send message to chat
     chatMessage = feedback => {
         sendChat('API', `/w gm <div ${divstyle}>` +
