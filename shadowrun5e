@@ -197,75 +197,44 @@ var sr5api = sr5api || (function() {
         selected.forEach(token => {
             try {
                 const characterID = getIDsFromTokens(token);
-                const characterName = getAttrByName([characterID], 'character_name');
                 const sheetType  = getAttrByName([characterID], 'sheet_type');
                 const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
                 const intiativeType = sheetType === "sprite" || sheetType === "host" || sheetType === "vehicle" ? 'matrix' : 'initiative';
 
-                selectedInitatives.push({
-                    name: characterName,
+                //Use makeRollsForIDs in Groupinit
+                const expression = `${intiativeObject.mod}+${intiativeObject.dice}d6`
+
+                let intiativeObject = {
+                    name: getAttrByName([characterID], 'character_name'),
                     mod: getAttrByName([characterID], `${intiativeType}_mod`),
                     dice: getAttrByName([characterID], `${intiativeType}_dice`),
                     id: characterID[0],
-                    token: tokenID
-                });
+                    token: tokenID        
+                }
+
+                 groupInitiative = {
+                    savedTurnOrders: [],
+                    config: {
+                        rollType: `Individual-Roll`,
+                        dieSize: 6,
+                        diceCount: getAttrByName([characterID], `${intiativeType}_dice`),
+                        diceMod: getAttrByName([characterID], `${intiativeType}_mod`),
+                        autoOpenInit: true,
+                        sortOption: 'Descending'
+                    }
+                };
+
+
+                selectedInitatives.push(intiativeObject);
             } catch (error) {
                 log(`findInitativeScores: ${error}`);
             }
-
-            log(selectedInitatives)
         });
 
         return selectedInitatives
     },
 
-    rollInitaitve = selected => {
-        const array = findInitativeScores(selected);
-        array.forEach(value => {
-            sendChat('API',`!sr5 --init --result [[${value.mod}+${value.dice}d6]]`, result => {
-                value.total = result[0].inlinerolls[0].results.total;
-
-                addTurnoOrder(value);
-            });
-        });
-    },
-
-    //Add to Turn Order
-    addTurnoOrder = value => {
-        let turnorder = Campaign().get("turnorder") == "" ? [] :  JSON.parse(Campaign().get("turnorder"));
-
-        if (turnorder.length === 0) {
-            turnorder.push({
-                id: value._id,
-                pr: value.total,
-                custom: value.name
-            });
-        } else {
-            let tokenFoundInTurnOrder = false;
-
-            log(turnorder);
-
-            turnorder.forEach(turnToken => {
-                if (turnToken.id === value.id) {
-                    turnToken.pr = value.total,
-                    turnToken.custom = value.name,
-                    tokenFoundInTurnOrder = true
-                };
-            });
-
-            if (!tokenFoundInTurnOrder) {
-                turnorder.push({
-                    id: value.id,
-                    pr: value.total,
-                    custom: value.name
-                });   
-            };
-        };
-        //Open Tracker if not open
-        openIntiativePage();
-
-        Campaign().set("turnorder", JSON.stringify(turnorder));
-    },
+    d6 = () => { return Math.floor(Math.random() * 5) + 1; },
 
     //Reroll Failures
     reRollDice = msg => {
