@@ -15,14 +15,14 @@ var sr5api = sr5api || (function() {
 
     const handleInput = msg => {
         const args = msg.content.split(" --");
-        if (args[0] === "!sr5" && msg.type !== api) {
+        if (args[0] === "!sr5" && msg.type === "api") {
             const noTokensSelected = `<div ${centered}>No tokens selected.</div>`;
             switch(args[1]) {
               case "token":
                 args[2] === 'link' && msg.selected != undefined ? linkTokens(msg.selected) : args[2] === 'link' ? chatMessage(noTokensSelected) : apiMenu();
                 break;
               case "init":
-                args[2] === 'counter' ? initiativeCounter() : args[2] === 'roll' && msg.selected != undefined ? rollInitiave(msg.selected) : args[2] === 'roll' && msg.selected === undefined  ? chatMessage(noTokensSelected) : apiMenu();
+                args[2] === 'counter' ? initiativeCounter() : args[2] === 'roll' && msg.selected != undefined ? rollInitaitve(msg.selected) : args[2] === 'roll' && msg.selected === undefined  ? chatMessage(noTokensSelected) : apiMenu();
                 break;
               default:
                 apiMenu()
@@ -157,9 +157,7 @@ var sr5api = sr5api || (function() {
         };
 
         //Open Tracker if not open
-        if (Campaign().get('initiativepage') === false) {
-            Campaign().set('initiativepage', true);
-        };
+        openIntiativePage();
 
         //Setup iniobj
         inicheck();
@@ -186,29 +184,95 @@ var sr5api = sr5api || (function() {
         });
     },
 
-    rollInitiave = selected => {
+    openIntiativePage = () => {
+        if (Campaign().get('initiativepage') === false) {
+            Campaign().set('initiativepage', true);
+        };
+    },
+
+    //Roll Group Intiative
+    findInitativeScores = selected => {
+        let selectedInitatives = [];
+
         selected.forEach(token => {
             try {
                 const characterID = getIDsFromTokens(token);
                 const characterName = getAttrByName([characterID], 'character_name');
-                const tokenID  = token._id;
                 const sheetType  = getAttrByName([characterID], 'sheet_type');
-
+                const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
                 const intiativeType = sheetType === "sprite" || sheetType === "host" || sheetType === "vehicle" ? 'matrix' : 'initiative';
-                const mod  = getAttrByName([characterID], `${intiativeType}_mod`);
-                const dice = getAttrByName([characterID], `${intiativeType}_dice`);
+
+                selectedInitatives.push({
+                    name: characterName,
+                    mod: getAttrByName([characterID], `${intiativeType}_mod`),
+                    dice: getAttrByName([characterID], `${intiativeType}_dice`),
+                    id: characterID[0],
+                    token: tokenID
+                });
             } catch (error) {
-                log(`rollInitiave: ${error}`);
+                log(`findInitativeScores: ${error}`);
             }
+
+            log(selectedInitatives)
         });
+
+        return selectedInitatives
+    },
+
+    rollInitaitve = selected => {
+        const array = findInitativeScores(selected);
+        array.forEach(value => {
+            sendChat('API',`!sr5 --init --result [[${value.mod}+${value.dice}d6]]`, result => {
+                value.total = result[0].inlinerolls[0].results.total;
+
+                addTurnoOrder(value);
+            });
+        });
+    },
+
+    //Add to Turn Order
+    addTurnoOrder = value => {
+        let turnorder = Campaign().get("turnorder") == "" ? [] :  JSON.parse(Campaign().get("turnorder"));
+
+        if (turnorder.length === 0) {
+            turnorder.push({
+                id: value._id,
+                pr: value.total,
+                custom: value.name
+            });
+        } else {
+            let tokenFoundInTurnOrder = false;
+
+            log(turnorder);
+
+            turnorder.forEach(turnToken => {
+                if (turnToken.id === value.id) {
+                    turnToken.pr = value.total,
+                    turnToken.custom = value.name,
+                    tokenFoundInTurnOrder = true
+                };
+            });
+
+            if (!tokenFoundInTurnOrder) {
+                turnorder.push({
+                    id: value.id,
+                    pr: value.total,
+                    custom: value.name
+                });   
+            };
+        };
+        //Open Tracker if not open
+        openIntiativePage();
+
+        Campaign().set("turnorder", JSON.stringify(turnorder));
     },
 
     //Reroll Failures
     reRollDice = msg => {
-        const diceIndex = msg.content.split('{{dice=$[[')[1].split(']]}}')[0];
-        const numberDiceRolled = msg.inlinerolls[`${diceIndex}`].results.rolls[0].dice;
-        const successTotal = msg.inlinerolls[`${diceIndex}`].results.total;
-        const reRollDice = numberDiceRolled - successTotal;
+        //const diceIndex = msg.content.split('{{dice=$[[')[1].split(']]}}')[0];
+        //const numberDiceRolled = msg.inlinerolls[`${diceIndex}`].results.rolls[0].dice;
+        //const successTotal = msg.inlinerolls[`${diceIndex}`].results.total;
+        //const reRollDice = numberDiceRolled - successTotal;
 
         //DO I create a button with the API?
         //Do I set a sheet atttribue and link a button to roll it?
