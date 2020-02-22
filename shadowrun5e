@@ -2,18 +2,18 @@ var sr5api = sr5api || (function() {
     'use strict';
     const primary = '#610b0d', secondary = '#666', third = '#e7e6e5';
     const divstyle   = 'style="color: #eee;width: 90%; border: 1px solid black; background-color: #131415; padding: 5px;"';
-    const astyle1    = `style="text-align:center; border: 1px solid black; margin: 1px; padding: 2px; background-color: ${primary}; border-radius: 4px;  box-shadow: 1px 1px 1px ${secondary}; width: 100px;`;
-    const astyle2    = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${primary}; border-radius: 4px;  box-shadow: 1px 1px 1px ${secondary}; width: 150px;"`;
+    const astyle     = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${primary}; border-radius: 4px;  box-shadow: 1px 1px 1px ${secondary}; width: 150px;"`;
     const arrowstyle = `style="border: none; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-left: 195px solid ${secondary}; margin: 5px 0px;"`;
     const headstyle  = `style="color: #fff; font-size: 18px; text-align: left; font-constiant: small-caps; font-family: Times, serif; margin-bottom: 2px;"`;
     const substyle   = 'style="font-size: 0.8em; line-height: 13px; margin-top: -2px; font-style: italic;"';
     const breaks     = `style="border-color:${third}; margin: 5px 2px;"`;
-    const label      = `style="color: #c9c9c9; display:inline-block; width: 50%"`;
-    const label2     = `style="color: #c9c9c9; display:inline-block; width: 32%"`;
     const centered   = `style="text-align:center;"`;
     const version    = '1';
+    const header     = `<div ${divstyle}><div ${headstyle}>Shadowrun 5th Edition <span ${substyle}>(v.${version})</span></div><div ${arrowstyle}>`;
 
     const handleInput = msg => {
+        log(msg)
+
         const args = msg.content.split(" --");
         if (args[0] === "!sr5" && msg.type === "api") {
             const noTokensSelected = `<div ${centered}>No tokens selected.</div>`;
@@ -28,18 +28,20 @@ var sr5api = sr5api || (function() {
                 apiMenu()
             }
         } else if (msg.inlinerolls) {
-            reRollDice(msg);
+            //reRollDice(msg);
+        } else if (msg.who === 'Sr5 Roll Initiative') {
+            processIniatitiveResults(msg.inlinerolls)
         }
     },
 
     apiMenu = () => {
         let feedback = ""
-        feedback += `<div ${centered}><a ${astyle2} href="!sr5 --token --link">Link Tokens</a></div>`
+        feedback += `<div ${centered}><a ${astyle} href="!sr5 --token --link">Link Tokens</a></div>`
         feedback += `<div ${centered}>Tokens must represent a character sheet.</div>`
         feedback += `<hr ${breaks} />`
-        feedback += `<div ${centered}><a ${astyle2} href="!sr5 --init --counter">Initiative Counter</a></div>`
+        feedback += `<div ${centered}><a ${astyle} href="!sr5 --init --counter">Initiative Counter</a></div>`
         feedback += `<div ${centered}>Adds an entry to track initiative passes. When it returns to top of tracker it will subtract all entries by 10.</div>`
-        feedback += `<div ${centered}><a ${astyle2} href="!sr5 --init --roll">Roll Initiative</a></div>`
+        feedback += `<div ${centered}><a ${astyle} href="!sr5 --init --roll">Roll Initiative</a></div>`
         feedback += `<div ${centered}>Roll intiative for all selected tokens</div>`
         
         chatMessage(feedback);
@@ -117,7 +119,7 @@ var sr5api = sr5api || (function() {
     },
 
     //Used to get character attributes for Linking Tokens
-    getIDsFromTokens = (selectedToken) => {
+    getIDsFromTokens = selectedToken => {
         return [selectedToken].map(obj => getObj("graphic", obj._id))
             .filter(x => !!x)
             .map(token => token.get("represents"))
@@ -191,46 +193,51 @@ var sr5api = sr5api || (function() {
     },
 
     //Roll Group Intiative
-    findInitativeScores = selected => {
-        let selectedInitatives = [];
+    rollInitaitve = selected => {
+        const selectedInitatives = findInitativeScores(selected);
+        let feedback = '';
 
+        for (let [key, value] of Object.entries(selectedInitatives)) {
+            feedback += `<div style='display: inline-block; border: 1px solid ${third}; border-radius: 5px; padding: 2%; background-color: ${secondary}; margin-bottom: 3%; width: 95%;'>`
+            feedback += `<img src='${value.token}' style='margin-right: 2%; width: 20%;'>`
+            feedback += `<label style='display: inline-block; font-weight: bold; font-size: 1.3em; color: ${third}; vertical-align: middle; width: 60%;'>${value.name}</label>`
+            feedback += `<div style='color: black; width: 15%; display: inline-block;'>[[${value.expression} [${value.id}]]]</div>`
+            feedback += `</div><br />`
+        }
+
+        sendChat('Sr5 Roll Initiative', `/w gm ${header}</div>${feedback}</div>`);
+    },
+
+    processIniatitiveResults = result => {
+        log(result)
+    },
+
+    findInitativeScores = selected => {
+        let selectedInitatives = {};
         selected.forEach(token => {
             try {
                 const characterID = getIDsFromTokens(token);
                 const sheetType  = getAttrByName([characterID], 'sheet_type');
-                const tokenID       = JSON.stringify(token).split(`_id":"`)[1].split(`","`)[0];
-                const intiativeType = sheetType === "sprite" || sheetType === "host" || sheetType === "vehicle" ? 'matrix' : 'initiative';
+                const tokenImg    = getObj(token._type, token._id).attributes['imgsrc'];
 
-                //Use makeRollsForIDs in Groupinit
-                const expression = `${intiativeObject.mod}+${intiativeObject.dice}d6`
+                const intiativeType = sheetType === "sprite" || sheetType === "host" || sheetType === "vehicle" ? 'matrix' : 'initiative';
 
                 let intiativeObject = {
                     name: getAttrByName([characterID], 'character_name'),
                     mod: getAttrByName([characterID], `${intiativeType}_mod`),
                     dice: getAttrByName([characterID], `${intiativeType}_dice`),
                     id: characterID[0],
-                    token: tokenID        
+                    token: tokenImg,
+                    sortOption: 'Descending'    
                 }
 
-                 groupInitiative = {
-                    savedTurnOrders: [],
-                    config: {
-                        rollType: `Individual-Roll`,
-                        dieSize: 6,
-                        diceCount: getAttrByName([characterID], `${intiativeType}_dice`),
-                        diceMod: getAttrByName([characterID], `${intiativeType}_mod`),
-                        autoOpenInit: true,
-                        sortOption: 'Descending'
-                    }
-                };
+                intiativeObject.expression = `${intiativeObject.mod}+${intiativeObject.dice}d6cs0cf0`
 
-
-                selectedInitatives.push(intiativeObject);
+                selectedInitatives[`${intiativeObject.name}`] = intiativeObject;
             } catch (error) {
                 log(`findInitativeScores: ${error}`);
             }
         });
-
         return selectedInitatives
     },
 
@@ -249,12 +256,7 @@ var sr5api = sr5api || (function() {
     
     //Send message to chat
     chatMessage = feedback => {
-        sendChat('API', `/w gm <div ${divstyle}>` +
-            `<div ${headstyle}>Shadowrun 5th Edition <span ${substyle}>(v.${version})</span></div>` +
-            `<div ${arrowstyle}></div>` +
-            feedback +
-            '</div>'
-        );
+        sendChat('API', `/w gm ${header}</div>${feedback}</div>`);
     },
 
     registerEventHandlers = () => {
