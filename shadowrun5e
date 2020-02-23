@@ -52,7 +52,7 @@ const sr5HelperFunctions = {
     findIndex: (property, match) => property.findIndex(element => Object.values(element).includes(match)),
 
     //Sort in Descending order
-    sortDescending: (array, key) => array.sort((a,b) => a[key] > b[key] ? -1 : 1),
+    sortDescending: (array, key) => array.sort((a,b) => a[key] > b[key] ? -1 : 1)
 }
 //:+:+:+:+:+: END HELPER FUNCTIONS :+:+:+:+:+: //
 
@@ -176,24 +176,48 @@ var sr5api = sr5api || (function() {
 
     //:+:+:+:+:+: INITATIVE COUNTER :+:+:+:+:+: //
     addInitiativeCounter = () => {
-        let turnorder = Campaign().get("turnorder") === "" ? [] :  JSON.parse(Campaign().get("turnorder"));
-        const counterIndex = sr5HelperFunctions.findIndex(turnorder, 'Initiative Pass');
+        try {
+            let turnorder = Campaign().get("turnorder") === "" ? [] :  JSON.parse(Campaign().get("turnorder"));
 
-        //Open Tracker if not open
-        openIntiativePage();
+            //Open Tracker if not open
+            openIntiativePage();
 
-        //Create "Initiative Pass" if it doesn't exist
-        if (counterIndex === -1) {
-            const newInitiative = new InitiativeTurn(1, -1, 'Initiative Pass');
-            turnorder.push(newInitiative)
-            Campaign().set("turnorder", JSON.stringify(turnorder));
-        } else {
-            const counter = turnorder[counterIndex]
-            turnorder.splice(counterIndex, 1)
-            turnorder.push(counter)
+            let iniobj = {
+                to: [],
+                check: '',
+                idx: 0
+            };
+
+            const inicheck = function() {
+                iniobj.po = iniobj.to;
+                iniobj.to = JSON.parse(Campaign().get('turnorder'));
+                iniobj.check = _.find(iniobj.to, obj => obj.custom == 'Initiative Pass');
+                iniobj.idx = iniobj.to.indexOf(iniobj.check);
+            };
+
+            const addini = oTurnOrder => {
+                oTurnOrder.unshift({
+                    id: '-1',
+                    pr: '1',
+                    custom: 'Initiative Pass'
+                });
+                Campaign().set("turnorder", JSON.stringify(oTurnOrder));
+            };
+
+            //Setup iniobj
+            inicheck();
+
+            //Create "Initiative Pass" if it doesn't exist
+            if(iniobj.check === undefined){
+                addini(iniobj.to);
+            } else{
+                iniobj.to.splice(iniobj.idx, 1);
+                addini(iniobj.to);
+            };
+
+        } catch (error) {
+            errorMessage('addInitiativeCounter', error)
         }
-
-        Campaign().set("turnorder", JSON.stringify(turnorder));
     },
 
     openIntiativePage = () => {
@@ -231,6 +255,8 @@ var sr5api = sr5api || (function() {
                 turnorder.splice(counterIndex, 1)
                 turnorder.push(counter)
             }
+
+            log(turnorder)
 
             Campaign().set("turnorder", JSON.stringify(turnorder));
         } catch (error) {
