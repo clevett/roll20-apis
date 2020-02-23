@@ -188,18 +188,18 @@ var sr5api = sr5api || (function() {
                 idx: 0
             };
 
-            const inicheck = function() {
+            const inicheck = () => {
                 iniobj.po = iniobj.to;
                 iniobj.to = JSON.parse(Campaign().get('turnorder'));
-                iniobj.check = _.find(iniobj.to, obj => obj.custom == 'Initiative Pass');
+                iniobj.check = _.find(iniobj.to, obj => obj.custom == 'Round / Pass');
                 iniobj.idx = iniobj.to.indexOf(iniobj.check);
             };
 
             const addini = oTurnOrder => {
                 oTurnOrder.unshift({
                     id: '-1',
-                    pr: '1',
-                    custom: 'Initiative Pass'
+                    pr: '1 / 1',
+                    custom: 'Round / Pass'
                 });
                 Campaign().set("turnorder", JSON.stringify(oTurnOrder));
             };
@@ -208,7 +208,7 @@ var sr5api = sr5api || (function() {
             inicheck();
 
             //Create "Initiative Pass" if it doesn't exist
-            if(iniobj.check === undefined){
+            if (iniobj.check === undefined) {
                 addini(iniobj.to);
             } else{
                 iniobj.to.splice(iniobj.idx, 1);
@@ -231,7 +231,7 @@ var sr5api = sr5api || (function() {
     addInitiativeToTracker = tokenInitiatives => {
         try {
             let turnorder = Campaign().get("turnorder") === "" ? [] :  JSON.parse(Campaign().get("turnorder"));
-            const counterIndex = sr5HelperFunctions.findIndex(turnorder, 'Initiative Pass');
+            const counterIndex = sr5HelperFunctions.findIndex(turnorder, 'Round / Pass');
 
             //Open Tracker if not open
             openIntiativePage();
@@ -255,8 +255,6 @@ var sr5api = sr5api || (function() {
                 turnorder.splice(counterIndex, 1)
                 turnorder.push(counter)
             }
-
-            log(turnorder)
 
             Campaign().set("turnorder", JSON.stringify(turnorder));
         } catch (error) {
@@ -364,20 +362,32 @@ on("ready",() => {
 //:+:+:+:+:+: INITATIVE COUNTER :+:+:+:+:+: //
 sr5CounterCheckInitiative = () => {
     let turnorder = JSON.parse(Campaign().get("turnorder"));
-    const counterIndex = sr5HelperFunctions.findIndex(turnorder, 'Initiative Pass');
+    const counterIndex = sr5HelperFunctions.findIndex(turnorder, 'Round / Pass');
 
     if (counterIndex === 0) {
         let counter = turnorder[counterIndex]
         turnorder.splice(counterIndex, 1)
-        counter.pr++
 
+        let feedback = ""
+
+        //Reduce all the intiatiives by 10 or remove them if < 0
         turnorder.forEach(turn => {
-            const index = sr5HelperFunctions.findIndex(turnorder, turn.id)
-            const math = turn.pr - 10; 
-            math < 0 ? turnorder.splice(index, 1) : turn.pr = math;
+            const index = turnorder.indexOf(turn);
+            const math = turn.pr -= 10;
+
+            feedback +=`<div>${turn.id} ${turn.pr}</div>`
+
+            math < 1 ? turnorder.splice(index, 1) : turn.pr = math;
         });
 
+        sendChat('API', `<div>${feedback}</div>`),
+        
         turnorder = sr5HelperFunctions.sortDescending(turnorder, 'pr')
+
+        const split = counter.pr.split(` / `)
+        let round = turnorder.length < 1 ? parseInt(split[0], 10) + 1 : split[0]
+        let pass = turnorder.length < 1 ? 1 : parseInt(split[1], 10) + 1
+        counter.pr = `${round} / ${pass}`
         turnorder.push(counter)
 
         Campaign().set("turnorder", JSON.stringify(turnorder));
