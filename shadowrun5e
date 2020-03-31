@@ -60,7 +60,7 @@ var sr5api = sr5api || (function() {
     'use strict';
     const primary = '#610b0d', secondary = '#666', third = '#e7e6e5';
     const divstyle   = 'style="color: #eee;width: 90%; border: 1px solid black; background-color: #131415; padding: 5px;"';
-    const astyle     = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${primary}; border-radius: 4px;  box-shadow: 1px 1px 1px ${secondary}; width: 150px;"`;
+    const astyle     = `style="text-align:center; border: 1px solid black; margin: 3px; padding: 2px; background-color: ${primary}; border-radius: 4px;  box-shadow: 1px 1px 1px ${secondary}; width: 135px;"`;
     const arrowstyle = `style="border: none; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-left: 195px solid ${secondary}; margin: 5px 0px;"`;
     const headstyle  = `style="color: #fff; font-size: 18px; text-align: left; font-constiant: small-caps; font-family: Times, serif; margin-bottom: 2px;"`;
     const substyle   = 'style="font-size: 0.8em; line-height: 13px; margin-top: -2px; font-style: italic;"';
